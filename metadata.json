@@ -1,0 +1,6 @@
+{
+  "name": "BLUE.JEANS",
+  "description": "Nowoczesny sklep z odzieżą jeansową z płatnościami online, filtrowaniem po rozmiarze i stylu oraz historią zakupów.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
