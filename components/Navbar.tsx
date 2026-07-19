@@ -5,6 +5,7 @@ import { useAuth } from './AuthContext';
 import { useStore } from './StoreContext';
 import { ShoppingCart, User, Search, Menu, X, LogOut, ClipboardList, ShoppingBag } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import Image from 'next/image';
 
 interface NavbarProps {
   onOpenAuth: () => void;
@@ -90,7 +91,7 @@ export default function Navbar({ onOpenAuth, onOpenCart, onOpenOrders, onScrollT
                 >
                   <div className="w-5 h-5 rounded-full bg-[#2B3E50] flex items-center justify-center text-white font-bold text-[10px] uppercase overflow-hidden border border-black shrink-0">
                     {user.photoURL ? (
-                      <img src={user.photoURL} alt={user.displayName || ''} className="w-full h-full object-cover" />
+                      <Image src={user.photoURL} alt={user.displayName || ''} width={20} height={20} className="w-full h-full object-cover" />
                     ) : (
                       user.displayName ? user.displayName[0] : 'U'
                     )}

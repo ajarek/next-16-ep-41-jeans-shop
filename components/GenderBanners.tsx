@@ -3,6 +3,7 @@
 import React from 'react';
 import { useStore } from './StoreContext';
 import { motion } from 'motion/react';
+import Image from 'next/image';
 
 interface GenderBannersProps {
   onShopClick: () => void;
@@ -25,11 +26,13 @@ export default function GenderBanners({ onShopClick, setSelectedGender }: Gender
             whileHover={{ scale: 1.01 }}
             transition={{ duration: 0.4 }}
             onClick={() => handleGenderSelect('Woman')}
-            className="group relative h-[350px] sm:h-[450px] overflow-hidden bg-stone-100 border-2 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] cursor-pointer"
+            className="group relative h-[350px] sm:h-[450px] w-full overflow-hidden bg-stone-100 border-2 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] cursor-pointer"
           >
-            <img
+            <Image
               src="https://img.magnific.com/free-photo/hair-fashionable-gray-sunglasses-brunette_1157-3225.jpg?semt=ais_hybrid&w=740&q=80"
               alt="Kolekcja Damska Jeans"
+              fill
+              sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 50vw'
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
             />
             {/* Ambient Dark Overlay at bottom for readable text */}
@@ -51,11 +54,13 @@ export default function GenderBanners({ onShopClick, setSelectedGender }: Gender
             whileHover={{ scale: 1.01 }}
             transition={{ duration: 0.4 }}
             onClick={() => handleGenderSelect('Man')}
-            className="group relative h-[350px] sm:h-[450px] overflow-hidden bg-stone-100 border-2 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] cursor-pointer"
+            className="group relative h-[350px] sm:h-[450px] w-full overflow-hidden bg-stone-100 border-2 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] cursor-pointer"
           >
-            <img
+            <Image
               src="https://t4.ftcdn.net/jpg/01/82/33/43/360_F_182334324_Snk2BsBEBSgCUWw1KcevXhe3iuyBbRyu.jpg"
               alt="Kolekcja Męska Jeans"
+              fill
+              sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 50vw'
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
             />
             {/* Ambient Dark Overlay */}

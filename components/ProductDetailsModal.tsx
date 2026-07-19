@@ -5,6 +5,7 @@ import { useStore } from './StoreContext';
 import { Product, SIZES } from '@/lib/store-data';
 import { X, ShoppingBag, Heart, Shield, RotateCcw, Truck } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import Image from 'next/image';
 
 interface ProductDetailsModalProps {
   product: Product | null;
@@ -61,10 +62,13 @@ export default function ProductDetailsModal({ product, onClose }: ProductDetails
 
           {/* Left Column: Product Photo */}
           <div className="w-full md:w-1/2 relative bg-stone-50 h-[320px] md:h-auto aspect-square md:aspect-auto border-b-2 md:border-b-0 md:border-r-2 border-black">
-            <img
+            <Image
               src={product.imageUrl}
               alt={product.name}
               className="w-full h-full object-cover"
+              fill
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 50vw"
+              loading='eager'
               referrerPolicy="no-referrer"
             />
             {product.badge && (

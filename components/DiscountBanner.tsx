@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useStore } from './StoreContext';
+import Image from 'next/image';
 
 interface DiscountBannerProps {
   onShopClick: () => void;
@@ -19,11 +20,12 @@ export default function DiscountBanner({ onShopClick }: DiscountBannerProps) {
   return (
     <section className="bg-[#FDFCFB] py-12 border-b border-black">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="relative h-[400px] sm:h-[500px] overflow-hidden bg-stone-100 border-2 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
-          <img
-            src="https://picsum.photos/seed/denim_group_shoot/1200/800"
+        <div className="relative h-[400px] sm:h-[500px] w-full overflow-hidden bg-stone-100 border-2 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)]">
+          <Image
+            src="https://images.stockcake.com/public/0/7/f/07fb565f-0a7d-46ec-aabb-b84940af6c3f_large/diverse-denim-styles-stockcake.jpg"
             alt="Denim Style Group Promo"
             className="w-full h-full object-cover"
+            fill
           />
 
           {/* Neo-brutalist Container in Center */}

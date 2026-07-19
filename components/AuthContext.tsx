@@ -109,7 +109,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           uid: 'simulated-ajarek',
           email: 'ajarek2101@gmail.com',
           displayName: 'Jarek',
-          photoURL: 'https://picsum.photos/seed/user_jarek/200',
+          photoURL: 'https://randomuser.me/api/portraits/men/75.jpg',
           isSimulated: true,
         };
         const savedUsers = [...mockUsers, { email, password, profile: newUser }];
@@ -172,7 +172,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         uid: 'simulated-' + Math.random().toString(36).substr(2, 9),
         email,
         displayName: name,
-        photoURL: `https://picsum.photos/seed/${name}/200`,
+        photoURL: `https://randomuser.me/api/portraits/men/75.jpg`,
         isSimulated: true,
       };
 
@@ -212,7 +212,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         uid: 'simulated-google-jarek',
         email,
         displayName: name,
-        photoURL: 'https://picsum.photos/seed/google_user/200',
+        photoURL: 'https://randomuser.me/api/portraits/men/75.jpg',
         isSimulated: true,
       };
       localStorage.setItem('denihub_user', JSON.stringify(mockUser));

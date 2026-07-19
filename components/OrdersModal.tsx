@@ -5,6 +5,7 @@ import { useStore, Order } from './StoreContext';
 import { useAuth } from './AuthContext';
 import { X, ClipboardList, RefreshCw, Calendar, Truck, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import Image from 'next/image';
 
 interface OrdersModalProps {
   isOpen: boolean;
@@ -184,7 +185,7 @@ export default function OrdersModal({ isOpen, onClose }: OrdersModalProps) {
                                   <div key={item.productId} className="flex justify-between items-center text-xs p-1.5 rounded-none hover:bg-[#F8F7F3]">
                                     <div className="flex items-center gap-2.5">
                                       <div className="w-8 h-10 rounded-none overflow-hidden bg-stone-100 border-2 border-black shrink-0">
-                                        <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                                        <Image src={item.imageUrl} alt={item.name} width={32} height={40} className="w-full h-full object-cover" />
                                       </div>
                                       <div>
                                         <p className="font-black text-stone-900">{item.name}</p>

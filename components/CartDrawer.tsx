@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useStore } from './StoreContext';
 import { X, Trash2, Tag, ShoppingBag, ArrowRight, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import Image from 'next/image';
 
 interface CartDrawerProps {
   isOpen: boolean;
@@ -113,11 +114,13 @@ export default function CartDrawer({ isOpen, onClose, onCheckout }: CartDrawerPr
                       className="flex gap-4 p-3 border-2 border-black bg-white shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]"
                     >
                       <div className="w-16 h-20 overflow-hidden shrink-0 bg-[#F8F7F3] border-2 border-black rounded-none">
-                        <img
+                        <Image
                           src={item.product.imageUrl}
                           alt={item.product.name}
                           className="w-full h-full object-cover"
                           referrerPolicy="no-referrer"
+                          width={64}
+                          height={80}
                         />
                       </div>
 

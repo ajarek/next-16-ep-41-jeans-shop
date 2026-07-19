@@ -5,6 +5,7 @@ import { useStore } from './StoreContext';
 import { PRODUCTS, CATEGORIES, SIZES, STYLES, Product } from '@/lib/store-data';
 import { SlidersHorizontal, Eye, ShoppingCart, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import Image from 'next/image';
 
 interface ProductListProps {
   onProductClick: (product: Product) => void;
@@ -273,10 +274,12 @@ export default function ProductList({ onProductClick, selectedGender, setSelecte
                   >
                     {/* Image Area */}
                     <div className="relative aspect-[3/4] w-full border-2 border-black overflow-hidden bg-stone-50">
-                      <img
+                      <Image
                         src={product.imageUrl}
                         alt={product.name}
                         className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-500"
+                        fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 50vw"
                         referrerPolicy="no-referrer"
                       />
                       
