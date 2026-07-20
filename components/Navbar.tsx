@@ -11,7 +11,6 @@ import {
   X,
   LogOut,
   ClipboardList,
-  ShoppingBag,
 } from "lucide-react"
 import { motion, AnimatePresence } from "motion/react"
 import Image from "next/image"
@@ -37,6 +36,29 @@ export default function Navbar({
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0)
 
+  const links = [
+    {
+      label: "Home",
+      href: "/"
+    },
+    {
+      label: "O nas",
+      href: "/about"
+    },
+    {
+      label: "Sklep",
+      href: "/shop"
+    },
+    {
+      label: "Blog",
+      href: "/blog"
+    },
+    {
+      label: "Kontakt",
+      href: "/contact"
+    }
+  ]
+
   const handleNavClick = (sectionId: string) => {
     setIsMobileMenuOpen(false)
     onScrollToSection(sectionId)
@@ -47,36 +69,15 @@ export default function Navbar({
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between'>
         {/* Desktop Left Nav Links */}
         <nav className='hidden lg:flex items-center gap-8 text-xs font-bold  tracking-widest text-[#1A1A1A]'>
-          <button
-            onClick={() => handleNavClick("home")}
-            className='hover:opacity-60 transition-opacity border-b-2 border-transparent hover:border-black pb-1'
-          >
-            Home
-          </button>
-          <button
-            onClick={() => handleNavClick("about")}
-            className='hover:opacity-60 transition-opacity border-b-2 border-transparent hover:border-black pb-1'
-          >
-            O nas
-          </button>
-          <Link
-            href='/shop'
-            className='hover:opacity-60 transition-opacity border-b-2 border-transparent hover:border-black pb-1 '
-          >
-            Sklep
-          </Link>
-          <button
-            onClick={() => handleNavClick("blog")}
-            className='hover:opacity-60 transition-opacity border-b-2 border-transparent hover:border-black pb-1'
-          >
-            Blog
-          </button>
-          <Link
-            href="/contact"
-            className='hover:opacity-60 transition-opacity border-b-2 border-transparent hover:border-black pb-1'
-          >
-            Kontakt
-          </Link>
+          {links.map((link) => (
+            <Link
+              key={link.label}
+              href={link.href}
+              className='hover:opacity-60 transition-opacity border-b-2 border-transparent hover:border-black pb-1'
+            >
+              {link.label}
+            </Link>
+          ))}
         </nav>
 
         {/* Mobile menu trigger */}
@@ -252,36 +253,15 @@ export default function Navbar({
                   className='absolute left-3 top-5 text-stone-400'
                 />
               </div>
-              <button
-                onClick={() => handleNavClick("home")}
-                className='block w-full py-2 border-b border-stone-50 text-left hover:text-black'
-              >
-                Home
-              </button>
-              <button
-                onClick={() => handleNavClick("about")}
-                className='block w-full py-2 border-b border-stone-50 text-left hover:text-black'
-              >
-                O nas
-              </button>
-              <Link
-                href='/shop'
-                className='block w-full py-2 border-b border-stone-50 text-left hover:text-black'
-              >
-                Sklep
-              </Link>
-              <button
-                onClick={() => handleNavClick("blog")}
-                className='block w-full py-2 border-b border-stone-50 text-left hover:text-black'
-              >
-                Blog
-              </button>
-              <button
-                onClick={() => handleNavClick("contact")}
-                className='block w-full py-2 text-left hover:text-black'
-              >
-                Kontakt
-              </button>
+              {links.map((link) => (
+                <Link
+                  key={link.label}
+                  href={link.href}
+                  className='block w-full py-2 border-b border-stone-50 text-left hover:text-black'
+                >
+                  {link.label}
+                </Link>
+              ))}
 
               {user && (
                 <button
