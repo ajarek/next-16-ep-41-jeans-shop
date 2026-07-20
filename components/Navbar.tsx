@@ -71,12 +71,12 @@ export default function Navbar({
           >
             Blog
           </button>
-          <button
-            onClick={() => handleNavClick("contact")}
+          <Link
+            href="/contact"
             className='hover:opacity-60 transition-opacity border-b-2 border-transparent hover:border-black pb-1'
           >
             Kontakt
-          </button>
+          </Link>
         </nav>
 
         {/* Mobile menu trigger */}
