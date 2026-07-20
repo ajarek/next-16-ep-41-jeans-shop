@@ -1,146 +1,167 @@
-'use client';
+"use client"
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useAuth } from './AuthContext';
-import { db, isFirebaseConfigured } from '@/lib/firebase';
-import { collection, addDoc, query, where, getDocs, orderBy } from 'firebase/firestore';
-import { Product, PRODUCTS } from '@/lib/store-data';
+import React, { createContext, useContext, useState, useEffect } from "react"
+import { useAuth } from "./AuthContext"
+import { db, isFirebaseConfigured } from "@/lib/firebase"
+import {
+  collection,
+  addDoc,
+  query,
+  where,
+  getDocs,
+  orderBy,
+} from "firebase/firestore"
+import { Product, PRODUCTS } from "@/lib/store-data"
 
 export interface CartItem {
-  product: Product;
-  size: 'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL';
-  quantity: number;
+  product: Product
+  size: "XS" | "S" | "M" | "L" | "XL" | "XXL"
+  quantity: number
 }
 
 export interface ShippingAddress {
-  name: string;
-  street: string;
-  city: string;
-  zip: string;
-  phone: string;
+  name: string
+  street: string
+  city: string
+  zip: string
+  phone: string
 }
 
 export interface Order {
-  id: string;
-  uid: string;
+  id: string
+  uid: string
   items: {
-    productId: string;
-    name: string;
-    price: number;
-    size: string;
-    quantity: number;
-    imageUrl: string;
-  }[];
-  totalAmount: number;
-  discountAmount: number;
-  promoCodeUsed: string | null;
-  shippingAddress: ShippingAddress;
-  paymentMethod: string;
-  createdAt: string;
-  status: 'Płatność zaakceptowana' | 'Wysyłka w toku' | 'Dostarczono' | 'Anulowano';
-  trackingNumber: string;
+    productId: string
+    name: string
+    price: number
+    size: string
+    quantity: number
+    imageUrl: string
+  }[]
+  totalAmount: number
+  discountAmount: number
+  promoCodeUsed: string | null
+  shippingAddress: ShippingAddress
+  paymentMethod: string
+  createdAt: string
+  status:
+    | "Płatność zaakceptowana"
+    | "Wysyłka w toku"
+    | "Dostarczono"
+    | "Anulowano"
+  trackingNumber: string
 }
 
 interface StoreContextType {
-  cart: CartItem[];
-  orders: Order[];
-  promoCode: string | null;
-  promoDiscount: number; // 0 to 1 (e.g. 0.25 for 25% off)
-  searchQuery: string;
-  selectedCategory: string;
-  selectedSize: string;
-  selectedStyle: string;
-  setSearchQuery: (query: string) => void;
-  setSelectedCategory: (category: string) => void;
-  setSelectedSize: (size: string) => void;
-  setSelectedStyle: (style: string) => void;
-  addToCart: (product: Product, size: CartItem['size'], quantity?: number) => void;
-  removeFromCart: (productId: string, size: CartItem['size']) => void;
-  updateCartQuantity: (productId: string, size: CartItem['size'], quantity: number) => void;
-  applyPromoCode: (code: string) => { success: boolean; message: string };
-  removePromoCode: () => void;
-  checkout: (address: ShippingAddress, paymentDetails: any) => Promise<Order>;
-  clearCart: () => void;
-  resetFilters: () => void;
-  loadingOrders: boolean;
+  cart: CartItem[]
+  orders: Order[]
+  promoCode: string | null
+  promoDiscount: number // 0 to 1 (e.g. 0.25 for 25% off)
+  searchQuery: string
+  selectedCategory: string
+  selectedSize: string
+  selectedStyle: string
+  setSearchQuery: (query: string) => void
+  setSelectedCategory: (category: string) => void
+  setSelectedSize: (size: string) => void
+  setSelectedStyle: (style: string) => void
+  addToCart: (
+    product: Product,
+    size: CartItem["size"],
+    quantity?: number,
+  ) => void
+  removeFromCart: (productId: string, size: CartItem["size"]) => void
+  updateCartQuantity: (
+    productId: string,
+    size: CartItem["size"],
+    quantity: number,
+  ) => void
+  applyPromoCode: (code: string) => { success: boolean; message: string }
+  removePromoCode: () => void
+  checkout: (address: ShippingAddress, paymentDetails: any) => Promise<Order>
+  clearCart: () => void
+  resetFilters: () => void
+  loadingOrders: boolean
 }
 
-const StoreContext = createContext<StoreContextType | undefined>(undefined);
+const StoreContext = createContext<StoreContextType | undefined>(undefined)
 
 // Helper functions defined outside the React component to keep render function pure
 function generateOrderId(): string {
-  return 'DH-' + Math.floor(100000 + Math.random() * 900000).toString();
+  return "DH-" + Math.floor(100000 + Math.random() * 900000).toString()
 }
 
 function generateTrackingNumber(): string {
-  return 'DH' + Math.floor(10000000 + Math.random() * 90000000).toString() + 'PL';
+  return (
+    "DH" + Math.floor(10000000 + Math.random() * 90000000).toString() + "PL"
+  )
 }
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
-  const { user } = useAuth();
-  
+  const { user } = useAuth()
+
   // Cart State
-  const [cart, setCart] = useState<CartItem[]>([]);
-  
+  const [cart, setCart] = useState<CartItem[]>([])
+
   // Orders State
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loadingOrders, setLoadingOrders] = useState(false);
-  
+  const [orders, setOrders] = useState<Order[]>([])
+  const [loadingOrders, setLoadingOrders] = useState(false)
+
   // Promo Code State
-  const [promoCode, setPromoCode] = useState<string | null>(null);
-  const [promoDiscount, setPromoDiscount] = useState<number>(0);
+  const [promoCode, setPromoCode] = useState<string | null>(null)
+  const [promoDiscount, setPromoDiscount] = useState<number>(0)
 
   // Filters State
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [selectedSize, setSelectedSize] = useState('all');
-  const [selectedStyle, setSelectedStyle] = useState('all');
+  const [searchQuery, setSearchQuery] = useState("")
+  const [selectedCategory, setSelectedCategory] = useState("all")
+  const [selectedSize, setSelectedSize] = useState("all")
+  const [selectedStyle, setSelectedStyle] = useState("all")
 
   // Load Cart from LocalStorage on mount
   useEffect(() => {
-    const savedCart = localStorage.getItem('denihub_cart');
+    const savedCart = localStorage.getItem("denihub_cart")
     if (savedCart) {
       try {
-        const parsed = JSON.parse(savedCart);
+        const parsed = JSON.parse(savedCart)
         setTimeout(() => {
-          setCart(parsed);
-        }, 0);
+          setCart(parsed)
+        }, 0)
       } catch (e) {
-        console.error('Failed to parse cart', e);
+        console.error("Failed to parse cart", e)
       }
     }
-  }, []);
+  }, [])
 
   // Save Cart to LocalStorage on change
   useEffect(() => {
-    localStorage.setItem('denihub_cart', JSON.stringify(cart));
-  }, [cart]);
+    localStorage.setItem("denihub_cart", JSON.stringify(cart))
+  }, [cart])
 
   // Load Orders when user changes
   useEffect(() => {
     if (!user) {
       setTimeout(() => {
-        setOrders([]);
-      }, 0);
-      return;
+        setOrders([])
+      }, 0)
+      return
     }
 
     const fetchOrders = async () => {
-      setLoadingOrders(true);
-      
+      setLoadingOrders(true)
+
       // If Firebase is configured and authenticated, fetch from Firestore
       if (isFirebaseConfigured && db && !user.isSimulated) {
         try {
-          const ordersRef = collection(db, 'orders');
+          const ordersRef = collection(db, "orders")
           const q = query(
             ordersRef,
-            where('uid', '==', user.uid),
-            orderBy('createdAt', 'desc')
-          );
-          const querySnapshot = await getDocs(q);
-          const fetchedOrders: Order[] = [];
+            where("uid", "==", user.uid),
+            orderBy("createdAt", "desc"),
+          )
+          const querySnapshot = await getDocs(q)
+          const fetchedOrders: Order[] = []
           querySnapshot.forEach((doc) => {
-            const data = doc.data();
+            const data = doc.data()
             fetchedOrders.push({
               id: doc.id,
               uid: data.uid,
@@ -153,114 +174,139 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
               createdAt: data.createdAt,
               status: data.status,
               trackingNumber: data.trackingNumber,
-            });
-          });
-          setOrders(fetchedOrders);
-          setLoadingOrders(false);
-          return;
+            })
+          })
+          setOrders(fetchedOrders)
+          setLoadingOrders(false)
+          return
         } catch (error) {
-          console.error('Failed to fetch orders from Firestore, falling back to LocalStorage:', error);
+          console.error(
+            "Failed to fetch orders from Firestore, falling back to LocalStorage:",
+            error,
+          )
           // Fall through to local storage
         }
       }
 
       // Local Fallback for orders
-      const localOrdersKey = `denihub_orders_${user.uid}`;
-      const savedOrders = localStorage.getItem(localOrdersKey);
+      const localOrdersKey = `denihub_orders_${user.uid}`
+      const savedOrders = localStorage.getItem(localOrdersKey)
       if (savedOrders) {
         try {
-          setOrders(JSON.parse(savedOrders));
+          setOrders(JSON.parse(savedOrders))
         } catch (e) {
-          console.error('Failed to parse orders', e);
-          setOrders([]);
+          console.error("Failed to parse orders", e)
+          setOrders([])
         }
       } else {
-        setOrders([]);
+        setOrders([])
       }
-      setLoadingOrders(false);
-    };
+      setLoadingOrders(false)
+    }
 
-    fetchOrders();
-  }, [user]);
+    fetchOrders()
+  }, [user])
 
   // Add item to cart
-  const addToCart = (product: Product, size: CartItem['size'], quantity = 1) => {
+  const addToCart = (
+    product: Product,
+    size: CartItem["size"],
+    quantity = 1,
+  ) => {
     setCart((prev) => {
-      const existingIndex = prev.findIndex((item) => item.product.id === product.id && item.size === size);
+      const existingIndex = prev.findIndex(
+        (item) => item.product.id === product.id && item.size === size,
+      )
       if (existingIndex > -1) {
-        const newCart = [...prev];
-        newCart[existingIndex].quantity += quantity;
-        return newCart;
+        const newCart = [...prev]
+        newCart[existingIndex].quantity += quantity
+        return newCart
       }
-      return [...prev, { product, size, quantity }];
-    });
-  };
+      return [...prev, { product, size, quantity }]
+    })
+  }
 
   // Remove from cart
-  const removeFromCart = (productId: string, size: CartItem['size']) => {
-    setCart((prev) => prev.filter((item) => !(item.product.id === productId && item.size === size)));
-  };
+  const removeFromCart = (productId: string, size: CartItem["size"]) => {
+    setCart((prev) =>
+      prev.filter(
+        (item) => !(item.product.id === productId && item.size === size),
+      ),
+    )
+  }
 
   // Update cart item quantity
-  const updateCartQuantity = (productId: string, size: CartItem['size'], quantity: number) => {
+  const updateCartQuantity = (
+    productId: string,
+    size: CartItem["size"],
+    quantity: number,
+  ) => {
     if (quantity <= 0) {
-      removeFromCart(productId, size);
-      return;
+      removeFromCart(productId, size)
+      return
     }
     setCart((prev) => {
       return prev.map((item) =>
-        item.product.id === productId && item.size === size ? { ...item, quantity } : item
-      );
-    });
-  };
+        item.product.id === productId && item.size === size
+          ? { ...item, quantity }
+          : item,
+      )
+    })
+  }
 
   // Apply code
   const applyPromoCode = (code: string) => {
-    const cleanCode = code.toUpperCase().trim();
-    if (cleanCode === 'TEES25') {
-      setPromoCode('TEES25');
-      setPromoDiscount(0.25); // 25% off
-      return { success: true, message: 'Kod TEES25 zastosowany! Zniżka 25%.' };
+    const cleanCode = code.toUpperCase().trim()
+    if (cleanCode === "TEES25") {
+      setPromoCode("TEES25")
+      setPromoDiscount(0.25) // 25% off
+      return { success: true, message: "Kod TEES25 zastosowany! Zniżka 25%." }
     }
-    return { success: false, message: 'Niepoprawny kod promocyjny.' };
-  };
+    return { success: false, message: "Niepoprawny kod promocyjny." }
+  }
 
   // Remove code
   const removePromoCode = () => {
-    setPromoCode(null);
-    setPromoDiscount(0);
-  };
+    setPromoCode(null)
+    setPromoDiscount(0)
+  }
 
   const clearCart = () => {
-    setCart([]);
-    setPromoCode(null);
-    setPromoDiscount(0);
-  };
+    setCart([])
+    setPromoCode(null)
+    setPromoDiscount(0)
+  }
 
   const resetFilters = () => {
-    setSearchQuery('');
-    setSelectedCategory('all');
-    setSelectedSize('all');
-    setSelectedStyle('all');
-  };
+    setSearchQuery("")
+    setSelectedCategory("all")
+    setSelectedSize("all")
+    setSelectedStyle("all")
+  }
 
   // Checkout process with mock payment simulation
-  const checkout = async (address: ShippingAddress, paymentDetails: any): Promise<Order> => {
+  const checkout = async (
+    address: ShippingAddress,
+    paymentDetails: any,
+  ): Promise<Order> => {
     if (cart.length === 0) {
-      throw new Error('Koszyk jest pusty.');
+      throw new Error("Koszyk jest pusty.")
     }
-    
-    // Calculate totals
-    const cartSubtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
-    const discount = cartSubtotal * promoDiscount;
-    const finalAmount = cartSubtotal - discount;
 
-    const generatedId = generateOrderId();
-    const trackingNo = generateTrackingNumber();
+    // Calculate totals
+    const cartSubtotal = cart.reduce(
+      (sum, item) => sum + item.product.price * item.quantity,
+      0,
+    )
+    const discount = cartSubtotal * promoDiscount
+    const finalAmount = cartSubtotal - discount
+
+    const generatedId = generateOrderId()
+    const trackingNo = generateTrackingNumber()
 
     const newOrder: Order = {
       id: generatedId,
-      uid: user ? user.uid : 'guest',
+      uid: user ? user.uid : "guest",
       items: cart.map((item) => ({
         productId: item.product.id,
         name: item.product.name,
@@ -273,20 +319,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       discountAmount: parseFloat(discount.toFixed(2)),
       promoCodeUsed: promoCode,
       shippingAddress: address,
-      paymentMethod: paymentDetails.method || 'Karta płatnicza',
+      paymentMethod: paymentDetails.method || "Karta płatnicza",
       createdAt: new Date().toISOString(),
-      status: 'Płatność zaakceptowana',
+      status: "Płatność zaakceptowana",
       trackingNumber: trackingNo,
-    };
+    }
 
     // Simulate 1.5s payment processor latency
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    await new Promise((resolve) => setTimeout(resolve, 1500))
 
     if (user) {
       // If Firebase is configured and user is real, save to Firestore
       if (isFirebaseConfigured && db && !user.isSimulated) {
         try {
-          const ordersRef = collection(db, 'orders');
+          const ordersRef = collection(db, "orders")
           await addDoc(ordersRef, {
             uid: newOrder.uid,
             items: newOrder.items,
@@ -298,14 +344,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             createdAt: newOrder.createdAt,
             status: newOrder.status,
             trackingNumber: newOrder.trackingNumber,
-          });
-          
+          })
+
           // Re-fetch orders list to ensure we have the newly added item with its Firestore doc id
-          const q = query(ordersRef, where('uid', '==', user.uid), orderBy('createdAt', 'desc'));
-          const snapshot = await getDocs(q);
-          const updatedOrders: Order[] = [];
+          const q = query(
+            ordersRef,
+            where("uid", "==", user.uid),
+            orderBy("createdAt", "desc"),
+          )
+          const snapshot = await getDocs(q)
+          const updatedOrders: Order[] = []
           snapshot.forEach((doc) => {
-            const data = doc.data();
+            const data = doc.data()
             updatedOrders.push({
               id: doc.id,
               uid: data.uid,
@@ -318,38 +368,43 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
               createdAt: data.createdAt,
               status: data.status,
               trackingNumber: data.trackingNumber,
-            });
-          });
-          setOrders(updatedOrders);
+            })
+          })
+          setOrders(updatedOrders)
         } catch (e) {
-          console.error('Failed to save order to Firestore, saving to local state instead:', e);
-          saveOrderLocally(newOrder);
+          console.error(
+            "Failed to save order to Firestore, saving to local state instead:",
+            e,
+          )
+          saveOrderLocally(newOrder)
         }
       } else {
         // Local Save
-        saveOrderLocally(newOrder);
+        saveOrderLocally(newOrder)
       }
     } else {
       // Guest order
-      const guestOrders = JSON.parse(localStorage.getItem('denihub_guest_orders') || '[]');
-      guestOrders.unshift(newOrder);
-      localStorage.setItem('denihub_guest_orders', JSON.stringify(guestOrders));
-      setOrders([newOrder]);
+      const guestOrders = JSON.parse(
+        localStorage.getItem("denihub_guest_orders") || "[]",
+      )
+      guestOrders.unshift(newOrder)
+      localStorage.setItem("denihub_guest_orders", JSON.stringify(guestOrders))
+      setOrders([newOrder])
     }
 
-    clearCart();
-    return newOrder;
-  };
+    clearCart()
+    return newOrder
+  }
 
   const saveOrderLocally = (order: Order) => {
-    if (!user) return;
-    const localOrdersKey = `denihub_orders_${user.uid}`;
-    const savedOrders = localStorage.getItem(localOrdersKey);
-    const existingOrders = savedOrders ? JSON.parse(savedOrders) : [];
-    const newOrders = [order, ...existingOrders];
-    localStorage.setItem(localOrdersKey, JSON.stringify(newOrders));
-    setOrders(newOrders);
-  };
+    if (!user) return
+    const localOrdersKey = `denihub_orders_${user.uid}`
+    const savedOrders = localStorage.getItem(localOrdersKey)
+    const existingOrders = savedOrders ? JSON.parse(savedOrders) : []
+    const newOrders = [order, ...existingOrders]
+    localStorage.setItem(localOrdersKey, JSON.stringify(newOrders))
+    setOrders(newOrders)
+  }
 
   return (
     <StoreContext.Provider
@@ -379,13 +434,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     >
       {children}
     </StoreContext.Provider>
-  );
+  )
 }
 
 export function useStore() {
-  const context = useContext(StoreContext);
+  const context = useContext(StoreContext)
   if (context === undefined) {
-    throw new Error('useStore must be used within a StoreProvider');
+    throw new Error("useStore must be used within a StoreProvider")
   }
-  return context;
+  return context
 }
