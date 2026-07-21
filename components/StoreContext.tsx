@@ -1,6 +1,12 @@
 "use client"
 
-import React, { createContext, useContext, useState, useEffect } from "react"
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+} from "react"
 import { useAuth } from "./AuthContext"
 import { db, isFirebaseConfigured } from "@/lib/firebase"
 import {
@@ -11,7 +17,9 @@ import {
   getDocs,
   orderBy,
 } from "firebase/firestore"
-import { Product, PRODUCTS } from "@/lib/store-data"
+import { fetchProducts } from "@/lib/products"
+import type { Product } from "@/lib/types"
+import { buildCategories, SIZES, STYLES } from "@/lib/types"
 
 export interface CartItem {
   product: Product
@@ -53,10 +61,14 @@ export interface Order {
 }
 
 interface StoreContextType {
+  products: Product[]
+  productsSource: "firestore" | "local" | "loading"
+  loadingProducts: boolean
+  categories: ReturnType<typeof buildCategories>
   cart: CartItem[]
   orders: Order[]
   promoCode: string | null
-  promoDiscount: number // 0 to 1 (e.g. 0.25 for 25% off)
+  promoDiscount: number
   searchQuery: string
   selectedCategory: string
   selectedSize: string
@@ -78,15 +90,15 @@ interface StoreContextType {
   ) => void
   applyPromoCode: (code: string) => { success: boolean; message: string }
   removePromoCode: () => void
-  checkout: (address: ShippingAddress, paymentDetails: any) => Promise<Order>
+  checkout: (address: ShippingAddress, paymentDetails: unknown) => Promise<Order>
   clearCart: () => void
   resetFilters: () => void
+  refreshProducts: () => Promise<void>
   loadingOrders: boolean
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined)
 
-// Helper functions defined outside the React component to keep render function pure
 function generateOrderId(): string {
   return "DH-" + Math.floor(100000 + Math.random() * 900000).toString()
 }
@@ -100,56 +112,65 @@ function generateTrackingNumber(): string {
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
 
-  // Cart State
-  const [cart, setCart] = useState<CartItem[]>([])
+  const [products, setProducts] = useState<Product[]>([])
+  const [productsSource, setProductsSource] = useState<
+    "firestore" | "local" | "loading"
+  >("loading")
+  const [loadingProducts, setLoadingProducts] = useState(true)
 
-  // Orders State
+  const [cart, setCart] = useState<CartItem[]>([])
   const [orders, setOrders] = useState<Order[]>([])
   const [loadingOrders, setLoadingOrders] = useState(false)
 
-  // Promo Code State
   const [promoCode, setPromoCode] = useState<string | null>(null)
   const [promoDiscount, setPromoDiscount] = useState<number>(0)
 
-  // Filters State
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [selectedSize, setSelectedSize] = useState("all")
   const [selectedStyle, setSelectedStyle] = useState("all")
 
-  // Load Cart from LocalStorage on mount
+  const categories = buildCategories(products)
+
+  const refreshProducts = useCallback(async () => {
+    setLoadingProducts(true)
+    const { products: fetched, source } = await fetchProducts()
+    setProducts(fetched)
+    setProductsSource(source)
+    setLoadingProducts(false)
+  }, [])
+
+  useEffect(() => {
+    refreshProducts()
+  }, [refreshProducts])
+
+  // Koszyk z localStorage
   useEffect(() => {
     const savedCart = localStorage.getItem("denihub_cart")
     if (savedCart) {
       try {
         const parsed = JSON.parse(savedCart)
-        setTimeout(() => {
-          setCart(parsed)
-        }, 0)
+        setTimeout(() => setCart(parsed), 0)
       } catch (e) {
         console.error("Failed to parse cart", e)
       }
     }
   }, [])
 
-  // Save Cart to LocalStorage on change
   useEffect(() => {
     localStorage.setItem("denihub_cart", JSON.stringify(cart))
   }, [cart])
 
-  // Load Orders when user changes
+  // Zamówienia użytkownika
   useEffect(() => {
     if (!user) {
-      setTimeout(() => {
-        setOrders([])
-      }, 0)
+      setTimeout(() => setOrders([]), 0)
       return
     }
 
     const fetchOrders = async () => {
       setLoadingOrders(true)
 
-      // If Firebase is configured and authenticated, fetch from Firestore
       if (isFirebaseConfigured && db && !user.isSimulated) {
         try {
           const ordersRef = collection(db, "orders")
@@ -160,15 +181,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           )
           const querySnapshot = await getDocs(q)
           const fetchedOrders: Order[] = []
-          querySnapshot.forEach((doc) => {
-            const data = doc.data()
+          querySnapshot.forEach((document) => {
+            const data = document.data()
             fetchedOrders.push({
-              id: doc.id,
+              id: document.id,
               uid: data.uid,
               items: data.items,
               totalAmount: data.totalAmount,
               discountAmount: data.discountAmount,
-              promoCodeUsed: data.promoCodeUsed,
+              promoCodeUsed: data.promoCodeUsed ?? null,
               shippingAddress: data.shippingAddress,
               paymentMethod: data.paymentMethod,
               createdAt: data.createdAt,
@@ -184,11 +205,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             "Failed to fetch orders from Firestore, falling back to LocalStorage:",
             error,
           )
-          // Fall through to local storage
         }
       }
 
-      // Local Fallback for orders
       const localOrdersKey = `denihub_orders_${user.uid}`
       const savedOrders = localStorage.getItem(localOrdersKey)
       if (savedOrders) {
@@ -207,7 +226,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     fetchOrders()
   }, [user])
 
-  // Add item to cart
   const addToCart = (
     product: Product,
     size: CartItem["size"],
@@ -219,14 +237,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       )
       if (existingIndex > -1) {
         const newCart = [...prev]
-        newCart[existingIndex].quantity += quantity
+        newCart[existingIndex] = {
+          ...newCart[existingIndex],
+          quantity: newCart[existingIndex].quantity + quantity,
+        }
         return newCart
       }
       return [...prev, { product, size, quantity }]
     })
   }
 
-  // Remove from cart
   const removeFromCart = (productId: string, size: CartItem["size"]) => {
     setCart((prev) =>
       prev.filter(
@@ -235,7 +255,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     )
   }
 
-  // Update cart item quantity
   const updateCartQuantity = (
     productId: string,
     size: CartItem["size"],
@@ -245,27 +264,25 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       removeFromCart(productId, size)
       return
     }
-    setCart((prev) => {
-      return prev.map((item) =>
+    setCart((prev) =>
+      prev.map((item) =>
         item.product.id === productId && item.size === size
           ? { ...item, quantity }
           : item,
-      )
-    })
+      ),
+    )
   }
 
-  // Apply code
   const applyPromoCode = (code: string) => {
     const cleanCode = code.toUpperCase().trim()
     if (cleanCode === "TEES25") {
       setPromoCode("TEES25")
-      setPromoDiscount(0.25) // 25% off
+      setPromoDiscount(0.25)
       return { success: true, message: "Kod TEES25 zastosowany! Zniżka 25%." }
     }
     return { success: false, message: "Niepoprawny kod promocyjny." }
   }
 
-  // Remove code
   const removePromoCode = () => {
     setPromoCode(null)
     setPromoDiscount(0)
@@ -284,16 +301,24 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setSelectedStyle("all")
   }
 
-  // Checkout process with mock payment simulation
+  const saveOrderLocally = (order: Order) => {
+    if (!user) return
+    const localOrdersKey = `denihub_orders_${user.uid}`
+    const savedOrders = localStorage.getItem(localOrdersKey)
+    const existingOrders = savedOrders ? JSON.parse(savedOrders) : []
+    const newOrders = [order, ...existingOrders]
+    localStorage.setItem(localOrdersKey, JSON.stringify(newOrders))
+    setOrders(newOrders)
+  }
+
   const checkout = async (
     address: ShippingAddress,
-    paymentDetails: any,
+    paymentDetails: { method?: string },
   ): Promise<Order> => {
     if (cart.length === 0) {
       throw new Error("Koszyk jest pusty.")
     }
 
-    // Calculate totals
     const cartSubtotal = cart.reduce(
       (sum, item) => sum + item.product.price * item.quantity,
       0,
@@ -301,11 +326,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const discount = cartSubtotal * promoDiscount
     const finalAmount = cartSubtotal - discount
 
-    const generatedId = generateOrderId()
-    const trackingNo = generateTrackingNumber()
-
     const newOrder: Order = {
-      id: generatedId,
+      id: generateOrderId(),
       uid: user ? user.uid : "guest",
       items: cart.map((item) => ({
         productId: item.product.id,
@@ -322,18 +344,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       paymentMethod: paymentDetails.method || "Karta płatnicza",
       createdAt: new Date().toISOString(),
       status: "Płatność zaakceptowana",
-      trackingNumber: trackingNo,
+      trackingNumber: generateTrackingNumber(),
     }
 
-    // Simulate 1.5s payment processor latency
     await new Promise((resolve) => setTimeout(resolve, 1500))
 
     if (user) {
-      // If Firebase is configured and user is real, save to Firestore
       if (isFirebaseConfigured && db && !user.isSimulated) {
         try {
           const ordersRef = collection(db, "orders")
-          await addDoc(ordersRef, {
+          const docRef = await addDoc(ordersRef, {
             uid: newOrder.uid,
             items: newOrder.items,
             totalAmount: newOrder.totalAmount,
@@ -346,31 +366,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             trackingNumber: newOrder.trackingNumber,
           })
 
-          // Re-fetch orders list to ensure we have the newly added item with its Firestore doc id
-          const q = query(
-            ordersRef,
-            where("uid", "==", user.uid),
-            orderBy("createdAt", "desc"),
-          )
-          const snapshot = await getDocs(q)
-          const updatedOrders: Order[] = []
-          snapshot.forEach((doc) => {
-            const data = doc.data()
-            updatedOrders.push({
-              id: doc.id,
-              uid: data.uid,
-              items: data.items,
-              totalAmount: data.totalAmount,
-              discountAmount: data.discountAmount,
-              promoCodeUsed: data.promoCodeUsed,
-              shippingAddress: data.shippingAddress,
-              paymentMethod: data.paymentMethod,
-              createdAt: data.createdAt,
-              status: data.status,
-              trackingNumber: data.trackingNumber,
-            })
-          })
-          setOrders(updatedOrders)
+          const orderWithId = { ...newOrder, id: docRef.id }
+          setOrders((prev) => [orderWithId, ...prev])
+          clearCart()
+          return orderWithId
         } catch (e) {
           console.error(
             "Failed to save order to Firestore, saving to local state instead:",
@@ -379,11 +378,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           saveOrderLocally(newOrder)
         }
       } else {
-        // Local Save
         saveOrderLocally(newOrder)
       }
     } else {
-      // Guest order
       const guestOrders = JSON.parse(
         localStorage.getItem("denihub_guest_orders") || "[]",
       )
@@ -396,19 +393,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return newOrder
   }
 
-  const saveOrderLocally = (order: Order) => {
-    if (!user) return
-    const localOrdersKey = `denihub_orders_${user.uid}`
-    const savedOrders = localStorage.getItem(localOrdersKey)
-    const existingOrders = savedOrders ? JSON.parse(savedOrders) : []
-    const newOrders = [order, ...existingOrders]
-    localStorage.setItem(localOrdersKey, JSON.stringify(newOrders))
-    setOrders(newOrders)
-  }
-
   return (
     <StoreContext.Provider
       value={{
+        products,
+        productsSource,
+        loadingProducts,
+        categories,
         cart,
         orders,
         promoCode,
@@ -429,6 +420,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         checkout,
         clearCart,
         resetFilters,
+        refreshProducts,
         loadingOrders,
       }}
     >
@@ -444,3 +436,6 @@ export function useStore() {
   }
   return context
 }
+
+// Re-exporty pomocnicze dla komponentów UI
+export { SIZES, STYLES }

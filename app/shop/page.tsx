@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import ProductList from '@/components/ProductList';
 import ProductDetailsModal from '@/components/ProductDetailsModal';
-import { Product } from '@/lib/store-data';
+import type { Product } from '@/lib/types';
 
 export default function ShopPage() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);

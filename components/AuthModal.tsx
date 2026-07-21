@@ -13,9 +13,9 @@ interface AuthModalProps {
 export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const { loginWithEmail, registerWithEmail, loginWithGoogle, error, setError } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState('ajarek2101@gmail.com'); // prefilled for convenience
-  const [password, setPassword] = useState('haslo123');
-  const [name, setName] = useState('Jarek');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
@@ -25,13 +25,22 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setIsSubmitting(true);
     setError(null);
     try {
+      // Firebase Auth: min. 6 znaków hasła, poprawny e-mail
+      if (password.length < 6) {
+        setError('Hasło musi mieć co najmniej 6 znaków.');
+        return;
+      }
       if (isLogin) {
         await loginWithEmail(email, password);
       } else {
+        if (!name.trim() || name.trim().length < 2) {
+          setError('Podaj imię (min. 2 znaki).');
+          return;
+        }
         await registerWithEmail(email, password, name);
       }
       onClose();
-    } catch (err) {
+    } catch {
       // Error handled by AuthContext
     } finally {
       setIsSubmitting(false);
@@ -145,9 +154,11 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 <input
                   type="password"
                   required
+                  minLength={6}
+                  autoComplete={isLogin ? 'current-password' : 'new-password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  placeholder="Min. 6 znaków"
                   className="w-full pl-10 pr-4 py-3 bg-white border-2 border-black text-xs font-bold uppercase focus:outline-hidden focus:bg-[#F8F7F3] transition-all"
                 />
               </div>

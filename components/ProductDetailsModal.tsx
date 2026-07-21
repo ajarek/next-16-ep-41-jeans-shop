@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import { useStore } from './StoreContext';
-import { Product, SIZES } from '@/lib/store-data';
+import type { Product } from '@/lib/types';
+import { SIZES } from '@/lib/types';
 import { X, ShoppingBag, Heart, Shield, RotateCcw, Truck } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Image from 'next/image';

@@ -2,9 +2,10 @@
 
 import React, { useState } from 'react';
 import { useStore } from './StoreContext';
-import { PRODUCTS, CATEGORIES, SIZES, STYLES, Product } from '@/lib/store-data';
-import { SlidersHorizontal, Eye, ShoppingCart, Info } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { SIZES, STYLES } from '@/lib/types';
+import type { Product } from '@/lib/types';
+import { SlidersHorizontal, Eye, ShoppingCart, Info, Loader2 } from 'lucide-react';
+import { motion } from 'motion/react';
 import Image from 'next/image';
 
 interface ProductListProps {
@@ -15,6 +16,9 @@ interface ProductListProps {
 
 export default function ProductList({ onProductClick, selectedGender, setSelectedGender }: ProductListProps) {
   const {
+    products,
+    categories,
+    loadingProducts,
     searchQuery,
     selectedCategory,
     selectedSize,
@@ -29,7 +33,7 @@ export default function ProductList({ onProductClick, selectedGender, setSelecte
   const [showFiltersMobile, setShowFiltersMobile] = useState(false);
 
   // Active Filter Calculation
-  const filteredProducts = PRODUCTS.filter((product) => {
+  const filteredProducts = products.filter((product) => {
     // 1. Search Query Filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
@@ -147,7 +151,7 @@ export default function ProductList({ onProductClick, selectedGender, setSelecte
                 <div className="space-y-2.5">
                   <h4 className="text-xs font-black uppercase tracking-wider text-[#1A1A1A]">Kategoria</h4>
                   <div className="space-y-1.5">
-                    {CATEGORIES.map((cat) => (
+                    {categories.map((cat) => (
                       <button
                         key={cat.id}
                         onClick={() => setSelectedCategory(cat.id)}
@@ -247,7 +251,15 @@ export default function ProductList({ onProductClick, selectedGender, setSelecte
               )}
             </div>
 
-            {filteredProducts.length === 0 ? (
+            {loadingProducts ? (
+              <div className="text-center py-20 bg-white border-2 border-dashed border-black">
+                <Loader2 className="w-10 h-10 text-stone-400 mx-auto mb-3 animate-spin" />
+                <h3 className="text-lg font-black text-stone-900 uppercase">Ładowanie katalogu…</h3>
+                <p className="text-xs text-stone-500 mt-1 max-w-xs mx-auto font-medium">
+                  Pobieramy produkty z Firebase Firestore.
+                </p>
+              </div>
+            ) : filteredProducts.length === 0 ? (
               <div className="text-center py-20 bg-white border-2 border-dashed border-black">
                 <Info className="w-10 h-10 text-stone-400 mx-auto mb-3" />
                 <h3 className="text-lg font-black text-stone-900 uppercase">Brak pasujących modeli</h3>

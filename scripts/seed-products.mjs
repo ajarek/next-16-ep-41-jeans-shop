@@ -1,23 +1,17 @@
 /**
- * Lokalne dane seedowe produktów.
- * Źródło prawdy w runtime: kolekcja Firestore `products`.
- * Ten plik służy do seedowania bazy oraz jako fallback offline.
+ * Seeduje kolekcję Firestore `products` danymi z lib/store-data.ts.
+ * Używa OAuth tokena z Firebase CLI (uprawnienia IAM — omija security rules).
+ *
+ * Uruchom: node scripts/seed-products.mjs
  */
-export type {
-  Product,
-} from "./types"
+import { readFileSync, existsSync } from "node:fs"
+import { homedir } from "node:os"
+import { join } from "node:path"
 
-export {
-  SIZES,
-  STYLES,
-  CATEGORY_LABELS,
-  buildCategories,
-} from "./types"
+const PROJECT_ID = "jeans-shop-ed7cf"
+const BASE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`
 
-import type { Product } from "./types"
-import { buildCategories } from "./types"
-
-export const PRODUCTS: Product[] = [
+const PRODUCTS = [
   {
     id: "p1",
     name: "Dżinsy",
@@ -161,5 +155,108 @@ export const PRODUCTS: Product[] = [
   },
 ]
 
-/** @deprecated Używaj buildCategories(products) z live produktów */
-export const CATEGORIES = buildCategories(PRODUCTS)
+function toFirestoreValue(value) {
+  if (value === null || value === undefined) return { nullValue: null }
+  if (typeof value === "string") return { stringValue: value }
+  if (typeof value === "boolean") return { booleanValue: value }
+  if (typeof value === "number") {
+    return Number.isInteger(value)
+      ? { integerValue: String(value) }
+      : { doubleValue: value }
+  }
+  if (Array.isArray(value)) {
+    return { arrayValue: { values: value.map(toFirestoreValue) } }
+  }
+  if (typeof value === "object") {
+    const fields = {}
+    for (const [k, v] of Object.entries(value)) {
+      fields[k] = toFirestoreValue(v)
+    }
+    return { mapValue: { fields } }
+  }
+  return { stringValue: String(value) }
+}
+
+function productToFields(product) {
+  const { id, ...rest } = product
+  const fields = {}
+  for (const [key, value] of Object.entries(rest)) {
+    if (value !== undefined) fields[key] = toFirestoreValue(value)
+  }
+  // Zachowaj id także w polach dokumentu
+  fields.id = toFirestoreValue(id)
+  return fields
+}
+
+function getAccessToken() {
+  const credPath = join(homedir(), ".config", "configstore", "firebase-tools.json")
+  if (!existsSync(credPath)) {
+    throw new Error(
+      `Brak tokena Firebase CLI (${credPath}). Uruchom: npx firebase login`,
+    )
+  }
+  const json = JSON.parse(readFileSync(credPath, "utf8"))
+  const token = json?.tokens?.access_token
+  if (!token) throw new Error("Brak access_token w firebase-tools.json")
+  return token
+}
+
+async function upsertProduct(token, product) {
+  const url = `${BASE}/products/${product.id}`
+  const body = { fields: productToFields(product) }
+  const res = await fetch(url, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  })
+
+  if (!res.ok) {
+    // Fallback: create if not exists
+    if (res.status === 404) {
+      const createUrl = `${BASE}/products?documentId=${product.id}`
+      const createRes = await fetch(createUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      })
+      if (!createRes.ok) {
+        const text = await createRes.text()
+        throw new Error(`Create ${product.id} failed: ${createRes.status} ${text}`)
+      }
+      return "created"
+    }
+    const text = await res.text()
+    throw new Error(`Upsert ${product.id} failed: ${res.status} ${text}`)
+  }
+  return "updated"
+}
+
+async function main() {
+  console.log(`Seeding ${PRODUCTS.length} products → project ${PROJECT_ID}`)
+  const token = getAccessToken()
+
+  let ok = 0
+  for (const product of PRODUCTS) {
+    try {
+      const status = await upsertProduct(token, product)
+      console.log(`  ✓ ${product.id} (${product.name}) — ${status}`)
+      ok++
+    } catch (err) {
+      console.error(`  ✗ ${product.id}:`, err.message)
+    }
+  }
+
+  console.log(`\nDone: ${ok}/${PRODUCTS.length} products seeded.`)
+  if (ok < PRODUCTS.length) process.exit(1)
+}
+
+main().catch((err) => {
+  console.error(err)
+  process.exit(1)
+})
