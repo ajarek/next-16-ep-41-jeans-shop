@@ -21,12 +21,15 @@ export async function upsertUserProfile(
     user.email?.split("@")[0] ||
     "Użytkownik"
 
+  const role = user.email?.toLowerCase() === "ajarek2101@gmail.com" ? "admin" : "user"
+
   if (existing.exists()) {
     await setDoc(
       ref,
       {
         displayName,
         photoURL: user.photoURL,
+        role,
         updatedAt: now,
       },
       { merge: true },
@@ -37,6 +40,7 @@ export async function upsertUserProfile(
       email: user.email ?? "",
       displayName,
       photoURL: user.photoURL,
+      role,
       createdAt: now,
       updatedAt: now,
     })

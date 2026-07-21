@@ -21,6 +21,8 @@ export interface UserProfile {
   displayName: string | null
   photoURL: string | null
   isSimulated: boolean
+  role: "admin" | "user"
+  isAdmin: boolean
 }
 
 interface AuthContextType {
@@ -41,13 +43,19 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+const ADMIN_EMAIL = "ajarek2101@gmail.com"
+
 function toProfile(user: User, isSimulated = false): UserProfile {
+  const emailLower = user.email?.toLowerCase() || ""
+  const isAdmin = emailLower === ADMIN_EMAIL.toLowerCase()
   return {
     uid: user.uid,
     email: user.email,
     displayName: user.displayName || user.email?.split("@")[0] || null,
     photoURL: user.photoURL,
     isSimulated,
+    role: isAdmin ? "admin" : "user",
+    isAdmin,
   }
 }
 
@@ -188,12 +196,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       throw new Error(msg)
     }
 
+    const isUserAdmin = email.toLowerCase() === ADMIN_EMAIL.toLowerCase()
     const newUser: UserProfile = {
       uid: "simulated-" + Math.random().toString(36).slice(2, 11),
       email,
       displayName: name.trim(),
       photoURL: null,
       isSimulated: true,
+      role: isUserAdmin ? "admin" : "user",
+      isAdmin: isUserAdmin,
     }
 
     mockUsers.push({ email, password, profile: newUser })
@@ -233,6 +244,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       displayName: "Demo User",
       photoURL: null,
       isSimulated: true,
+      role: "user",
+      isAdmin: false,
     }
     localStorage.setItem("denihub_user", JSON.stringify(mockUser))
     setUser(mockUser)

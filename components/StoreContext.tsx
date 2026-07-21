@@ -17,7 +17,14 @@ import {
   getDocs,
   orderBy,
 } from "firebase/firestore"
-import { fetchProducts } from "@/lib/products"
+import {
+  fetchProducts,
+  addProductDoc,
+  updateProductDoc,
+  deleteProductDoc,
+  saveLocalProducts,
+} from "@/lib/products"
+import { PRODUCTS } from "@/lib/store-data"
 import type { Product } from "@/lib/types"
 import { buildCategories, SIZES, STYLES } from "@/lib/types"
 
@@ -95,6 +102,10 @@ interface StoreContextType {
   resetFilters: () => void
   refreshProducts: () => Promise<void>
   loadingOrders: boolean
+  addProduct: (productData: Omit<Product, "id">) => Promise<Product>
+  updateProduct: (id: string, productData: Partial<Product>) => Promise<void>
+  deleteProduct: (id: string) => Promise<void>
+  resetProductsToDefault: () => Promise<void>
 }
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined)
@@ -143,6 +154,40 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     refreshProducts()
   }, [refreshProducts])
+
+  const addProduct = async (productData: Omit<Product, "id">): Promise<Product> => {
+    const created = await addProductDoc(productData)
+    setProducts((prev) => {
+      const updated = [created, ...prev]
+      saveLocalProducts(updated)
+      return updated
+    })
+    return created
+  }
+
+  const updateProduct = async (id: string, productData: Partial<Product>): Promise<void> => {
+    await updateProductDoc(id, productData)
+    setProducts((prev) => {
+      const updated = prev.map((p) => (p.id === id ? { ...p, ...productData } : p))
+      saveLocalProducts(updated)
+      return updated
+    })
+  }
+
+  const deleteProduct = async (id: string): Promise<void> => {
+    await deleteProductDoc(id)
+    setProducts((prev) => {
+      const updated = prev.filter((p) => p.id !== id)
+      saveLocalProducts(updated)
+      return updated
+    })
+  }
+
+  const resetProductsToDefault = async (): Promise<void> => {
+    saveLocalProducts(PRODUCTS)
+    setProducts(PRODUCTS)
+    setProductsSource("local")
+  }
 
   // Koszyk z localStorage
   useEffect(() => {
@@ -313,7 +358,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const checkout = async (
     address: ShippingAddress,
-    paymentDetails: { method?: string },
+    paymentDetails: unknown,
   ): Promise<Order> => {
     if (cart.length === 0) {
       throw new Error("Koszyk jest pusty.")
@@ -325,6 +370,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     )
     const discount = cartSubtotal * promoDiscount
     const finalAmount = cartSubtotal - discount
+    const paymentMethodName =
+      (paymentDetails as { method?: string })?.method || "Karta płatnicza"
 
     const newOrder: Order = {
       id: generateOrderId(),
@@ -341,7 +388,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       discountAmount: parseFloat(discount.toFixed(2)),
       promoCodeUsed: promoCode,
       shippingAddress: address,
-      paymentMethod: paymentDetails.method || "Karta płatnicza",
+      paymentMethod: paymentMethodName,
       createdAt: new Date().toISOString(),
       status: "Płatność zaakceptowana",
       trackingNumber: generateTrackingNumber(),
@@ -422,6 +469,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         resetFilters,
         refreshProducts,
         loadingOrders,
+        addProduct,
+        updateProduct,
+        deleteProduct,
+        resetProductsToDefault,
       }}
     >
       {children}

@@ -17,6 +17,7 @@ export interface UserProfileDoc {
   email: string
   displayName: string
   photoURL: string | null
+  role: "admin" | "user"
   createdAt: string
   updatedAt: string
 }

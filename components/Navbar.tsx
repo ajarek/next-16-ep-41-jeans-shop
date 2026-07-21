@@ -11,6 +11,7 @@ import {
   X,
   LogOut,
   ClipboardList,
+  ShieldCheck,
 } from "lucide-react"
 import { motion, AnimatePresence } from "motion/react"
 import Image from "next/image"
@@ -35,28 +36,37 @@ export default function Navbar({
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false)
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0)
+  const isAdmin = user?.isAdmin || user?.email?.toLowerCase() === "ajarek2101@gmail.com"
 
   const links = [
     {
       label: "Home",
-      href: "/"
+      href: "/",
     },
     {
       label: "O nas",
-      href: "/about"
+      href: "/about",
     },
     {
       label: "Sklep",
-      href: "/shop"
+      href: "/shop",
     },
     {
       label: "Blog",
-      href: "/blog"
+      href: "/blog",
     },
     {
       label: "Kontakt",
-      href: "/contact"
-    }
+      href: "/contact",
+    },
+    ...(isAdmin
+      ? [
+          {
+            label: "Admin",
+            href: "/admin",
+          },
+        ]
+      : []),
   ]
 
   const handleNavClick = (sectionId: string) => {
@@ -177,6 +187,16 @@ export default function Navbar({
                             {user.email}
                           </p>
                         </div>
+                        {isAdmin && (
+                          <Link
+                            href='/admin'
+                            onClick={() => setIsProfileDropdownOpen(false)}
+                            className='w-full flex items-center gap-2.5 px-4 py-2.5 text-[#1A1A1A] hover:bg-black hover:text-white text-left text-xs font-bold uppercase tracking-wider transition-colors border-b border-stone-200'
+                          >
+                            <ShieldCheck size={14} className='text-amber-600' />
+                            <span>Panel Admina</span>
+                          </Link>
+                        )}
                         <button
                           onClick={() => {
                             setIsProfileDropdownOpen(false)
