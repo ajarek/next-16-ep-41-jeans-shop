@@ -782,7 +782,7 @@ export default function AdminOrdersView({ onNotification }: AdminOrdersViewProps
               <div className='border-b-4 border-black pb-4 flex justify-between items-start'>
                 <div>
                   <h2 className='text-3xl font-black italic tracking-tighter uppercase text-stone-900'>
-                    DENIHUB <span className='text-[#E11D48]'>EXPRESS</span>
+                   Blue Jeans <span className='text-[#E11D48]'>EXPRESS</span>
                   </h2>
                   <p className='text-[10px] font-mono font-bold uppercase tracking-widest text-stone-500 mt-1'>
                     E-COMMERCE FULFILLMENT CENTER • NIP: 123-456-78-90
@@ -814,7 +814,7 @@ export default function AdminOrdersView({ onNotification }: AdminOrdersViewProps
                   <span className='text-[9px] font-black uppercase tracking-widest text-stone-500 block border-b border-stone-300 pb-1'>
                     NADAWCA / SHIPPER
                   </span>
-                  <p className='font-black text-stone-900'>DeniHub Jeans Store</p>
+                  <p className='font-black text-stone-900'>Blue Jeans Store</p>
                   <p className='text-stone-700 font-semibold'>Magazyn Centralny 01</p>
                   <p className='text-stone-700 font-semibold'>ul. Fabryczna 10, 00-950 Warszawa</p>
                   <p className='text-stone-500 font-mono text-[10px] pt-1'>Tel: +48 800 123 456</p>

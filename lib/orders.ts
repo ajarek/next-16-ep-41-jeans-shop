@@ -5,9 +5,98 @@ import {
   updateDoc,
   query,
   orderBy,
+  where,
 } from "firebase/firestore"
 import { db, isFirebaseConfigured } from "@/lib/firebase"
-import type { Order, OrderStatus } from "@/lib/types"
+import type { Order, OrderItem, OrderStatus, ShippingAddress } from "@/lib/types"
+
+/** Mapuje dokument Firestore z kolekcji "orders" na typ Order. */
+export function mapOrderDoc(
+  id: string,
+  data: Record<string, unknown>,
+): Order {
+  const shipping = (data.shippingAddress as ShippingAddress | undefined) || {
+    name: "Brak danych",
+    street: "",
+    city: "",
+    zip: "",
+    phone: "",
+  }
+
+  return {
+    id,
+    uid: String(data.uid || "nieznany"),
+    items: (Array.isArray(data.items) ? data.items : []) as OrderItem[],
+    totalAmount: Number(data.totalAmount || 0),
+    discountAmount: Number(data.discountAmount || 0),
+    promoCodeUsed: (data.promoCodeUsed as string | null) ?? null,
+    shippingAddress: shipping,
+    paymentMethod: String(data.paymentMethod || "Karta płatnicza"),
+    createdAt: String(data.createdAt || new Date().toISOString()),
+    status: (data.status as OrderStatus) || "Płatność zaakceptowana",
+    trackingNumber:
+      String(data.trackingNumber || "") || `DH-${id.slice(0, 6)}`,
+  }
+}
+
+function sortOrdersByDateDesc(orders: Order[]): Order[] {
+  return [...orders].sort(
+    (a, b) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  )
+}
+
+/**
+ * Pobiera zamówienia zalogowanego użytkownika z kolekcji Firestore "orders"
+ * (filtr: uid == userId). Przy braku indeksu złożonego sortuje po stronie klienta.
+ */
+function toErrorMessage(err: unknown): string {
+  if (err && typeof err === "object") {
+    const e = err as { code?: string; message?: string }
+    if (e.code === "permission-denied" || e.message?.includes("insufficient permissions")) {
+      return "Missing or insufficient permissions. Sprawdź reguły Firestore i czy jesteś zalogowany."
+    }
+    if (e.message) return e.message
+  }
+  return err instanceof Error ? err.message : String(err)
+}
+
+export async function fetchUserOrdersFromFirestore(
+  uid: string,
+): Promise<{
+  orders: Order[]
+  source: "firestore" | "none"
+  error?: string
+}> {
+  if (!isFirebaseConfigured || !db) {
+    return {
+      orders: [],
+      source: "none",
+      error: "Firebase nie jest skonfigurowany",
+    }
+  }
+
+  if (!uid) {
+    return { orders: [], source: "none", error: "Brak uid użytkownika" }
+  }
+
+  const ordersRef = collection(db, "orders")
+
+  // 1) Proste zapytanie tylko po uid (nie wymaga composite index)
+  try {
+    const q = query(ordersRef, where("uid", "==", uid))
+    const snapshot = await getDocs(q)
+    const orders: Order[] = []
+    snapshot.forEach((docSnap) => {
+      orders.push(mapOrderDoc(docSnap.id, docSnap.data() as Record<string, unknown>))
+    })
+    return { orders: sortOrdersByDateDesc(orders), source: "firestore" }
+  } catch (err: unknown) {
+    const errorMessage = toErrorMessage(err)
+    console.error("[orders] Błąd pobierania zamówień użytkownika:", err)
+    return { orders: [], source: "none", error: errorMessage }
+  }
+}
 
 // Domyślne przykładowe zamówienia do celów demonstracyjnych / fallback
 export const SAMPLE_ADMIN_ORDERS: Order[] = [
@@ -109,8 +198,8 @@ export const SAMPLE_ADMIN_ORDERS: Order[] = [
 ]
 
 /**
- * Pobiera wszystkie zamówienia z kolekcji Firestore "orders".
- * W przypadku braku połączenia lub braku zamówień w bazie, łączy pobrane zamówienia z lokalnymi / przykładowymi danymi demo.
+ * Pobiera wszystkie zamówienia z kolekcji Firestore "orders" (panel admina).
+ * Przy braku Firebase / błędzie — fallback do SAMPLE_ADMIN_ORDERS.
  */
 export async function fetchAdminOrdersFromFirestore(): Promise<{
   orders: Order[]
@@ -128,33 +217,10 @@ export async function fetchAdminOrdersFromFirestore(): Promise<{
 
     const fetched: Order[] = []
     snapshot.forEach((docSnap) => {
-      const data = docSnap.data()
-      fetched.push({
-        id: docSnap.id,
-        uid: data.uid || "nieznany",
-        items: data.items || [],
-        totalAmount: Number(data.totalAmount || 0),
-        discountAmount: Number(data.discountAmount || 0),
-        promoCodeUsed: data.promoCodeUsed ?? null,
-        shippingAddress: data.shippingAddress || {
-          name: "Brak danych",
-          street: "",
-          city: "",
-          zip: "",
-          phone: "",
-        },
-        paymentMethod: data.paymentMethod || "Karta płatnicza",
-        createdAt: data.createdAt || new Date().toISOString(),
-        status: (data.status as OrderStatus) || "Płatność zaakceptowana",
-        trackingNumber: data.trackingNumber || `DH-${docSnap.id.slice(0, 6)}`,
-      })
+      fetched.push(mapOrderDoc(docSnap.id, docSnap.data()))
     })
 
-    if (fetched.length === 0) {
-      // Przydatne na start, jeśli w Firestore jeszcze nikt nie złożył zamówień
-      return { orders: SAMPLE_ADMIN_ORDERS, source: "local" }
-    }
-
+    // Pusta kolekcja = pusta lista (bez przykładowych danych demo)
     return { orders: fetched, source: "firestore" }
   } catch (err: unknown) {
     const errorMessage = err instanceof Error ? err.message : String(err)

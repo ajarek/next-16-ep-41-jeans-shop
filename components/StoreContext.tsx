@@ -9,14 +9,7 @@ import React, {
 } from "react"
 import { useAuth } from "./AuthContext"
 import { db, isFirebaseConfigured } from "@/lib/firebase"
-import {
-  collection,
-  addDoc,
-  query,
-  where,
-  getDocs,
-  orderBy,
-} from "firebase/firestore"
+import { collection, addDoc } from "firebase/firestore"
 import {
   fetchProducts,
   addProductDoc,
@@ -24,6 +17,7 @@ import {
   deleteProductDoc,
   saveLocalProducts,
 } from "@/lib/products"
+import { fetchUserOrdersFromFirestore } from "@/lib/orders"
 import { PRODUCTS } from "@/lib/store-data"
 import type { Product } from "@/lib/types"
 import { buildCategories, SIZES, STYLES } from "@/lib/types"
@@ -101,7 +95,10 @@ interface StoreContextType {
   clearCart: () => void
   resetFilters: () => void
   refreshProducts: () => Promise<void>
+  refreshOrders: () => Promise<void>
   loadingOrders: boolean
+  ordersSource: "firestore" | "local" | "none" | "loading"
+  ordersError: string | null
   addProduct: (productData: Omit<Product, "id">) => Promise<Product>
   updateProduct: (id: string, productData: Partial<Product>) => Promise<void>
   deleteProduct: (id: string) => Promise<void>
@@ -132,6 +129,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([])
   const [orders, setOrders] = useState<Order[]>([])
   const [loadingOrders, setLoadingOrders] = useState(false)
+  const [ordersSource, setOrdersSource] = useState<
+    "firestore" | "local" | "none" | "loading"
+  >("none")
+  const [ordersError, setOrdersError] = useState<string | null>(null)
 
   const [promoCode, setPromoCode] = useState<string | null>(null)
   const [promoDiscount, setPromoDiscount] = useState<number>(0)
@@ -206,70 +207,67 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("denihub_cart", JSON.stringify(cart))
   }, [cart])
 
-  // Zamówienia użytkownika
-  useEffect(() => {
+  const refreshOrders = useCallback(async () => {
     if (!user) {
-      setTimeout(() => setOrders([]), 0)
+      setOrders([])
+      setOrdersSource("none")
+      setOrdersError(null)
+      setLoadingOrders(false)
       return
     }
 
-    const fetchOrders = async () => {
-      setLoadingOrders(true)
+    setLoadingOrders(true)
+    setOrdersSource("loading")
+    setOrdersError(null)
 
-      if (isFirebaseConfigured && db && !user.isSimulated) {
-        try {
-          const ordersRef = collection(db, "orders")
-          const q = query(
-            ordersRef,
-            where("uid", "==", user.uid),
-            orderBy("createdAt", "desc"),
-          )
-          const querySnapshot = await getDocs(q)
-          const fetchedOrders: Order[] = []
-          querySnapshot.forEach((document) => {
-            const data = document.data()
-            fetchedOrders.push({
-              id: document.id,
-              uid: data.uid,
-              items: data.items,
-              totalAmount: data.totalAmount,
-              discountAmount: data.discountAmount,
-              promoCodeUsed: data.promoCodeUsed ?? null,
-              shippingAddress: data.shippingAddress,
-              paymentMethod: data.paymentMethod,
-              createdAt: data.createdAt,
-              status: data.status,
-              trackingNumber: data.trackingNumber,
-            })
-          })
-          setOrders(fetchedOrders)
-          setLoadingOrders(false)
-          return
-        } catch (error) {
-          console.error(
-            "Failed to fetch orders from Firestore, falling back to LocalStorage:",
-            error,
-          )
-        }
+    // Prawdziwe konto Firebase → kolekcja "orders" w Firestore
+    if (isFirebaseConfigured && db && !user.isSimulated) {
+      const result = await fetchUserOrdersFromFirestore(user.uid)
+      if (result.source === "firestore") {
+        setOrders(result.orders)
+        setOrdersSource("firestore")
+        setOrdersError(null)
+        setLoadingOrders(false)
+        return
       }
-
-      const localOrdersKey = `denihub_orders_${user.uid}`
-      const savedOrders = localStorage.getItem(localOrdersKey)
-      if (savedOrders) {
-        try {
-          setOrders(JSON.parse(savedOrders))
-        } catch (e) {
-          console.error("Failed to parse orders", e)
-          setOrders([])
-        }
-      } else {
+      // Nie ukrywaj błędu uprawnień pod „local” — pokaż go użytkownikowi
+      setOrdersError(result.error ?? "Nie udało się pobrać zamówień z Firestore")
+      console.warn(
+        "[orders] Firestore niedostępny:",
+        result.error,
+      )
+      // Przy permission-denied nie mieszaj z localStorage (fałszywe „lokalne dane”)
+      if (result.error?.toLowerCase().includes("permission")) {
         setOrders([])
+        setOrdersSource("none")
+        setLoadingOrders(false)
+        return
       }
-      setLoadingOrders(false)
     }
 
-    fetchOrders()
+    // Symulowane konto / brak Firebase → localStorage
+    const localOrdersKey = `denihub_orders_${user.uid}`
+    const savedOrders = localStorage.getItem(localOrdersKey)
+    if (savedOrders) {
+      try {
+        setOrders(JSON.parse(savedOrders) as Order[])
+        setOrdersSource("local")
+      } catch (e) {
+        console.error("Failed to parse orders", e)
+        setOrders([])
+        setOrdersSource("none")
+      }
+    } else {
+      setOrders([])
+      setOrdersSource("none")
+    }
+    setLoadingOrders(false)
   }, [user])
+
+  // Zamówienia użytkownika — pobierz przy logowaniu / zmianie konta
+  useEffect(() => {
+    void refreshOrders()
+  }, [refreshOrders])
 
   const addToCart = (
     product: Product,
@@ -354,6 +352,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     const newOrders = [order, ...existingOrders]
     localStorage.setItem(localOrdersKey, JSON.stringify(newOrders))
     setOrders(newOrders)
+    setOrdersSource("local")
   }
 
   const checkout = async (
@@ -415,6 +414,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
           const orderWithId = { ...newOrder, id: docRef.id }
           setOrders((prev) => [orderWithId, ...prev])
+          setOrdersSource("firestore")
           clearCart()
           return orderWithId
         } catch (e) {
@@ -468,7 +468,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         clearCart,
         resetFilters,
         refreshProducts,
+        refreshOrders,
         loadingOrders,
+        ordersSource,
+        ordersError,
         addProduct,
         updateProduct,
         deleteProduct,
