@@ -69,16 +69,22 @@ const STATUS_COLORS: Record<
   },
 }
 
-export default function AdminOrdersView({ onNotification }: AdminOrdersViewProps) {
+export default function AdminOrdersView({
+  onNotification,
+}: AdminOrdersViewProps) {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
-  const [dataSource, setDataSource] = useState<"firestore" | "local">("firestore")
+  const [dataSource, setDataSource] = useState<"firestore" | "local">(
+    "firestore",
+  )
   const [fetchError, setFetchError] = useState<string | null>(null)
 
   // Filtry i Sortowanie
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
-  const [sortBy, setSortBy] = useState<"newest" | "oldest" | "highest" | "lowest">("newest")
+  const [sortBy, setSortBy] = useState<
+    "newest" | "oldest" | "highest" | "lowest"
+  >("newest")
 
   // Modale
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null)
@@ -112,9 +118,12 @@ export default function AdminOrdersView({ onNotification }: AdminOrdersViewProps
     const totalCount = orders.length
     const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0)
     const pendingCount = orders.filter(
-      (o) => o.status === "Płatność zaakceptowana" || o.status === "Wysyłka w toku",
+      (o) =>
+        o.status === "Płatność zaakceptowana" || o.status === "Wysyłka w toku",
     ).length
-    const deliveredCount = orders.filter((o) => o.status === "Dostarczono").length
+    const deliveredCount = orders.filter(
+      (o) => o.status === "Dostarczono",
+    ).length
     const avgOrderValue = totalCount > 0 ? totalRevenue / totalCount : 0
 
     return {
@@ -134,7 +143,9 @@ export default function AdminOrdersView({ onNotification }: AdminOrdersViewProps
           o.id.toLowerCase().includes(search.toLowerCase()) ||
           o.shippingAddress.name.toLowerCase().includes(search.toLowerCase()) ||
           o.shippingAddress.city.toLowerCase().includes(search.toLowerCase()) ||
-          o.shippingAddress.street.toLowerCase().includes(search.toLowerCase()) ||
+          o.shippingAddress.street
+            .toLowerCase()
+            .includes(search.toLowerCase()) ||
           o.trackingNumber.toLowerCase().includes(search.toLowerCase())
 
         const matchesStatus =
@@ -144,10 +155,14 @@ export default function AdminOrdersView({ onNotification }: AdminOrdersViewProps
       })
       .sort((a, b) => {
         if (sortBy === "newest") {
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          return (
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          )
         }
         if (sortBy === "oldest") {
-          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          return (
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          )
         }
         if (sortBy === "highest") {
           return b.totalAmount - a.totalAmount
@@ -160,7 +175,10 @@ export default function AdminOrdersView({ onNotification }: AdminOrdersViewProps
   }, [orders, search, statusFilter, sortBy])
 
   // Obsługa zmiany statusu zamówienia w Firestore
-  const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
+  const handleStatusChange = async (
+    orderId: string,
+    newStatus: OrderStatus,
+  ) => {
     setUpdatingOrderId(orderId)
     // Zapisz najpierw optymistycznie w stanie
     setOrders((prev) =>
@@ -174,9 +192,13 @@ export default function AdminOrdersView({ onNotification }: AdminOrdersViewProps
     setUpdatingOrderId(null)
 
     if (success) {
-      onNotification?.(`Zaktualizowano status zamówienia ${orderId} na "${newStatus}".`)
+      onNotification?.(
+        `Zaktualizowano status zamówienia ${orderId} na "${newStatus}".`,
+      )
     } else {
-      onNotification?.(`Zaktualizowano lokalnie zamówienie ${orderId} (brak połączenia Firestore).`)
+      onNotification?.(
+        `Zaktualizowano lokalnie zamówienie ${orderId} (brak połączenia Firestore).`,
+      )
     }
   }
 
@@ -193,7 +215,9 @@ export default function AdminOrdersView({ onNotification }: AdminOrdersViewProps
         o.id === selectedOrder.id ? { ...o, trackingNumber: trackingInput } : o,
       ),
     )
-    setSelectedOrder((prev) => (prev ? { ...prev, trackingNumber: trackingInput } : null))
+    setSelectedOrder((prev) =>
+      prev ? { ...prev, trackingNumber: trackingInput } : null,
+    )
     setEditingTracking(false)
     if (success) {
       onNotification?.(`Zapisano numer przesyłki ${trackingInput} w Firestore.`)
@@ -244,9 +268,11 @@ export default function AdminOrdersView({ onNotification }: AdminOrdersViewProps
               <DollarSign size={18} className='text-emerald-800' />
             </div>
           </div>
-          <p className='text-3xl font-black text-black'>{stats.totalRevenue} PLN</p>
+          <p className='text-3xl font-black text-black'>
+            {stats.totalRevenue} zł
+          </p>
           <p className='text-[10px] font-bold text-emerald-700 mt-1 uppercase tracking-wider'>
-            Średnia wartość zamówienia: {stats.avgOrderValue} PLN
+            Średnia wartość zamówienia: {stats.avgOrderValue} zł
           </p>
         </div>
 
@@ -260,7 +286,9 @@ export default function AdminOrdersView({ onNotification }: AdminOrdersViewProps
               <Clock size={18} />
             </div>
           </div>
-          <p className='text-3xl font-black text-stone-900'>{stats.pendingCount}</p>
+          <p className='text-3xl font-black text-stone-900'>
+            {stats.pendingCount}
+          </p>
           <p className='text-[10px] font-bold text-amber-800 mt-1 uppercase tracking-wider'>
             Wymagają przetworzenia lub nadania
           </p>
@@ -276,7 +304,9 @@ export default function AdminOrdersView({ onNotification }: AdminOrdersViewProps
               <CheckCircle2 size={18} />
             </div>
           </div>
-          <p className='text-3xl font-black text-stone-900'>{stats.deliveredCount}</p>
+          <p className='text-3xl font-black text-stone-900'>
+            {stats.deliveredCount}
+          </p>
           <p className='text-[10px] font-bold text-emerald-700 mt-1 uppercase tracking-wider'>
             Zakończone pomyślnie
           </p>
@@ -295,7 +325,10 @@ export default function AdminOrdersView({ onNotification }: AdminOrdersViewProps
               onChange={(e) => setSearch(e.target.value)}
               className='w-full pl-9 pr-8 py-2 bg-[#F8F7F3] border border-black text-xs font-semibold focus:outline-hidden focus:bg-white'
             />
-            <Search size={16} className='absolute left-2.5 top-2.5 text-stone-600' />
+            <Search
+              size={16}
+              className='absolute left-2.5 top-2.5 text-stone-600'
+            />
             {search && (
               <button
                 onClick={() => setSearch("")}
@@ -317,7 +350,9 @@ export default function AdminOrdersView({ onNotification }: AdminOrdersViewProps
                 className='px-3 py-2 bg-[#F8F7F3] border border-black text-xs font-bold focus:outline-hidden'
               >
                 <option value='all'>Wszystkie Statusy</option>
-                <option value='Płatność zaakceptowana'>Płatność zaakceptowana</option>
+                <option value='Płatność zaakceptowana'>
+                  Płatność zaakceptowana
+                </option>
                 <option value='Wysyłka w toku'>Wysyłka w toku</option>
                 <option value='Dostarczono'>Dostarczono</option>
                 <option value='Anulowano'>Anulowano</option>
@@ -330,7 +365,13 @@ export default function AdminOrdersView({ onNotification }: AdminOrdersViewProps
               <select
                 value={sortBy}
                 onChange={(e) =>
-                  setSortBy(e.target.value as "newest" | "oldest" | "highest" | "lowest")
+                  setSortBy(
+                    e.target.value as
+                      | "newest"
+                      | "oldest"
+                      | "highest"
+                      | "lowest",
+                  )
                 }
                 className='px-3 py-2 bg-[#F8F7F3] border border-black text-xs font-bold focus:outline-hidden'
               >
@@ -348,7 +389,10 @@ export default function AdminOrdersView({ onNotification }: AdminOrdersViewProps
               className='px-3 py-2 bg-[#1A1A1A] text-white border border-black text-xs font-bold uppercase tracking-wider shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:bg-black flex items-center gap-2 transition-all cursor-pointer'
               title='Pobierz zamówienia z bazy danych Firestore'
             >
-              <RefreshCw size={14} className={loading ? "animate-spin text-[#E11D48]" : ""} />
+              <RefreshCw
+                size={14}
+                className={loading ? "animate-spin text-[#E11D48]" : ""}
+              />
               <span>Odśwież Firestore</span>
             </button>
           </div>
@@ -361,7 +405,9 @@ export default function AdminOrdersView({ onNotification }: AdminOrdersViewProps
             <span>
               Źródło danych:{" "}
               <span className='bg-black text-white px-1.5 py-0.5 uppercase tracking-widest text-[9px]'>
-                {dataSource === "firestore" ? "Firestore Collection 'orders'" : "Lokale Demo Data"}
+                {dataSource === "firestore"
+                  ? "Firestore Collection 'orders'"
+                  : "Lokale Demo Data"}
               </span>
             </span>
             {fetchError && (
@@ -370,8 +416,14 @@ export default function AdminOrdersView({ onNotification }: AdminOrdersViewProps
           </div>
           <div>
             Pokazywanie{" "}
-            <span className='font-mono font-black text-black'>{filteredOrders.length}</span> z{" "}
-            <span className='font-mono font-black text-black'>{orders.length}</span> zamówień
+            <span className='font-mono font-black text-black'>
+              {filteredOrders.length}
+            </span>{" "}
+            z{" "}
+            <span className='font-mono font-black text-black'>
+              {orders.length}
+            </span>{" "}
+            zamówień
           </div>
         </div>
       </div>
@@ -411,7 +463,9 @@ export default function AdminOrdersView({ onNotification }: AdminOrdersViewProps
               </thead>
               <tbody className='divide-y-2 divide-black text-xs font-semibold'>
                 {filteredOrders.map((order) => {
-                  const statusStyle = STATUS_COLORS[order.status] || STATUS_COLORS["Płatność zaakceptowana"]
+                  const statusStyle =
+                    STATUS_COLORS[order.status] ||
+                    STATUS_COLORS["Płatność zaakceptowana"]
                   const isUpdatingThis = updatingOrderId === order.id
 
                   return (
@@ -437,8 +491,12 @@ export default function AdminOrdersView({ onNotification }: AdminOrdersViewProps
                           {order.shippingAddress.name}
                         </p>
                         <p className='text-[11px] text-stone-600 flex items-center gap-1.5'>
-                          <MapPin size={12} className='text-stone-400 shrink-0' />
-                          {order.shippingAddress.city}, {order.shippingAddress.street}
+                          <MapPin
+                            size={12}
+                            className='text-stone-400 shrink-0'
+                          />
+                          {order.shippingAddress.city},{" "}
+                          {order.shippingAddress.street}
                         </p>
                         <p className='text-[10px] text-stone-400 font-mono'>
                           {order.shippingAddress.phone}
@@ -460,20 +518,35 @@ export default function AdminOrdersView({ onNotification }: AdminOrdersViewProps
                             value={order.status}
                             disabled={isUpdatingThis}
                             onChange={(e) =>
-                              handleStatusChange(order.id, e.target.value as OrderStatus)
+                              handleStatusChange(
+                                order.id,
+                                e.target.value as OrderStatus,
+                              )
                             }
                             className={`px-2.5 py-1 text-[11px] font-black uppercase tracking-wider border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] cursor-pointer focus:outline-hidden ${statusStyle.badgeBg}`}
                           >
-                            <option value='Płatność zaakceptowana' className='bg-white text-black'>
+                            <option
+                              value='Płatność zaakceptowana'
+                              className='bg-white text-black'
+                            >
                               Płatność zaakceptowana
                             </option>
-                            <option value='Wysyłka w toku' className='bg-white text-black'>
+                            <option
+                              value='Wysyłka w toku'
+                              className='bg-white text-black'
+                            >
                               Wysyłka w toku
                             </option>
-                            <option value='Dostarczono' className='bg-white text-black'>
+                            <option
+                              value='Dostarczono'
+                              className='bg-white text-black'
+                            >
                               Dostarczono
                             </option>
-                            <option value='Anulowano' className='bg-white text-black'>
+                            <option
+                              value='Anulowano'
+                              className='bg-white text-black'
+                            >
                               Anulowano
                             </option>
                           </select>
@@ -485,7 +558,8 @@ export default function AdminOrdersView({ onNotification }: AdminOrdersViewProps
                         <div className='flex items-center gap-1.5'>
                           <Package size={13} className='text-stone-500' />
                           <span className='font-bold text-stone-800'>
-                            {order.items.reduce((s, i) => s + i.quantity, 0)} szt. ({order.items.length} pozycji)
+                            {order.items.reduce((s, i) => s + i.quantity, 0)}{" "}
+                            szt. ({order.items.length} pozycji)
                           </span>
                         </div>
                         <div className='text-[10px] text-stone-500 truncate max-w-[180px]'>
@@ -496,11 +570,11 @@ export default function AdminOrdersView({ onNotification }: AdminOrdersViewProps
                       {/* Kwota */}
                       <td className='p-3.5 align-top text-right space-y-0.5 whitespace-nowrap'>
                         <p className='font-mono font-black text-stone-900 text-sm'>
-                          ${order.totalAmount.toFixed(2)}
+                          zł{order.totalAmount.toFixed(2)}
                         </p>
                         {order.discountAmount > 0 && (
                           <p className='text-[10px] text-emerald-700 font-bold'>
-                            Rabat: -${order.discountAmount.toFixed(2)}
+                            Rabat: -zł{order.discountAmount.toFixed(2)}
                           </p>
                         )}
                         <p className='text-[10px] text-stone-400 uppercase font-semibold'>
@@ -574,7 +648,8 @@ export default function AdminOrdersView({ onNotification }: AdminOrdersViewProps
                       </span>
                     </div>
                     <p className='text-[10px] text-stone-300 font-mono mt-0.5'>
-                      UID Klienta: {selectedOrder.uid} • Złożono: {formatDate(selectedOrder.createdAt)}
+                      UID Klienta: {selectedOrder.uid} • Złożono:{" "}
+                      {formatDate(selectedOrder.createdAt)}
                     </p>
                   </div>
                 </div>
@@ -633,11 +708,16 @@ export default function AdminOrdersView({ onNotification }: AdminOrdersViewProps
                     <select
                       value={selectedOrder.status}
                       onChange={(e) =>
-                        handleStatusChange(selectedOrder.id, e.target.value as OrderStatus)
+                        handleStatusChange(
+                          selectedOrder.id,
+                          e.target.value as OrderStatus,
+                        )
                       }
                       className='px-3 py-1.5 bg-[#1A1A1A] text-white border-2 border-black font-black text-xs uppercase tracking-wider cursor-pointer focus:outline-hidden'
                     >
-                      <option value='Płatność zaakceptowana'>Płatność zaakceptowana</option>
+                      <option value='Płatność zaakceptowana'>
+                        Płatność zaakceptowana
+                      </option>
                       <option value='Wysyłka w toku'>Wysyłka w toku</option>
                       <option value='Dostarczono'>Dostarczono</option>
                       <option value='Anulowano'>Anulowano</option>
@@ -667,19 +747,21 @@ export default function AdminOrdersView({ onNotification }: AdminOrdersViewProps
                             />
                           </div>
                           <div>
-                            <p className='font-black text-stone-900 text-xs'>{item.name}</p>
+                            <p className='font-black text-stone-900 text-xs'>
+                              {item.name}
+                            </p>
                             <div className='flex items-center gap-2 mt-1 text-[10px] font-bold text-stone-500'>
                               <span className='bg-stone-100 border border-black px-1.5 py-0.5 text-black'>
                                 Rozmiar: {item.size}
                               </span>
                               <span>Ilość: {item.quantity} szt.</span>
-                              <span>Cena jedn.: ${item.price.toFixed(2)}</span>
+                              <span>Cena jedn.: zł{item.price.toFixed(2)}</span>
                             </div>
                           </div>
                         </div>
 
                         <div className='text-right font-mono font-black text-stone-900 text-sm'>
-                          ${(item.price * item.quantity).toFixed(2)}
+                          zł{(item.price * item.quantity).toFixed(2)}
                         </div>
                       </div>
                     ))}
@@ -700,7 +782,8 @@ export default function AdminOrdersView({ onNotification }: AdminOrdersViewProps
                       </p>
                       <p>{selectedOrder.shippingAddress.street}</p>
                       <p>
-                        {selectedOrder.shippingAddress.zip} {selectedOrder.shippingAddress.city}
+                        {selectedOrder.shippingAddress.zip}{" "}
+                        {selectedOrder.shippingAddress.city}
                       </p>
                       <p className='text-stone-500 font-mono text-[11px] pt-1 flex items-center gap-1'>
                         <Phone size={11} />
@@ -722,14 +805,19 @@ export default function AdminOrdersView({ onNotification }: AdminOrdersViewProps
                       {selectedOrder.promoCodeUsed && (
                         <p className='text-[11px] font-bold text-emerald-700 flex items-center gap-1'>
                           <Tag size={11} />
-                          Kod Rabatowy: {selectedOrder.promoCodeUsed} (-${selectedOrder.discountAmount.toFixed(2)})
+                          Kod Rabatowy: {selectedOrder.promoCodeUsed} (-zł
+                          {selectedOrder.discountAmount.toFixed(2)})
                         </p>
                       )}
                     </div>
 
                     <div className='pt-2 border-t-2 border-black flex justify-between items-baseline font-mono'>
-                      <span className='text-xs font-black uppercase text-stone-600'>Razem Opłacono:</span>
-                      <span className='text-lg font-black text-black'>${selectedOrder.totalAmount.toFixed(2)}</span>
+                      <span className='text-xs font-black uppercase text-stone-600'>
+                        Razem Opłacono:
+                      </span>
+                      <span className='text-lg font-black text-black'>
+                        ${selectedOrder.totalAmount.toFixed(2)}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -782,7 +870,7 @@ export default function AdminOrdersView({ onNotification }: AdminOrdersViewProps
               <div className='border-b-4 border-black pb-4 flex justify-between items-start'>
                 <div>
                   <h2 className='text-3xl font-black italic tracking-tighter uppercase text-stone-900'>
-                   Blue Jeans <span className='text-[#E11D48]'>EXPRESS</span>
+                    Blue Jeans <span className='text-[#E11D48]'>EXPRESS</span>
                   </h2>
                   <p className='text-[10px] font-mono font-bold uppercase tracking-widest text-stone-500 mt-1'>
                     E-COMMERCE FULFILLMENT CENTER • NIP: 123-456-78-90
@@ -815,9 +903,15 @@ export default function AdminOrdersView({ onNotification }: AdminOrdersViewProps
                     NADAWCA / SHIPPER
                   </span>
                   <p className='font-black text-stone-900'>Blue Jeans Store</p>
-                  <p className='text-stone-700 font-semibold'>Magazyn Centralny 01</p>
-                  <p className='text-stone-700 font-semibold'>ul. Fabryczna 10, 00-950 Warszawa</p>
-                  <p className='text-stone-500 font-mono text-[10px] pt-1'>Tel: +48 800 123 456</p>
+                  <p className='text-stone-700 font-semibold'>
+                    Magazyn Centralny 01
+                  </p>
+                  <p className='text-stone-700 font-semibold'>
+                    ul. Fabryczna 10, 00-950 Warszawa
+                  </p>
+                  <p className='text-stone-500 font-mono text-[10px] pt-1'>
+                    Tel: +48 800 123 456
+                  </p>
                 </div>
 
                 <div className='border-2 border-black p-4 space-y-1 bg-stone-100 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]'>
@@ -831,7 +925,8 @@ export default function AdminOrdersView({ onNotification }: AdminOrdersViewProps
                     {printModalOrder.shippingAddress.street}
                   </p>
                   <p className='text-stone-800 font-bold'>
-                    {printModalOrder.shippingAddress.zip} {printModalOrder.shippingAddress.city}
+                    {printModalOrder.shippingAddress.zip}{" "}
+                    {printModalOrder.shippingAddress.city}
                   </p>
                   <p className='text-stone-600 font-mono text-[10px] pt-1 font-bold'>
                     Tel: {printModalOrder.shippingAddress.phone}
@@ -845,19 +940,31 @@ export default function AdminOrdersView({ onNotification }: AdminOrdersViewProps
                   <thead>
                     <tr className='bg-black text-white font-black uppercase tracking-wider text-[10px]'>
                       <th className='p-2 border-b border-black'>Produkt</th>
-                      <th className='p-2 border-b border-black text-center'>Rozmiar</th>
-                      <th className='p-2 border-b border-black text-center'>Ilość</th>
-                      <th className='p-2 border-b border-black text-right'>Wartość</th>
+                      <th className='p-2 border-b border-black text-center'>
+                        Rozmiar
+                      </th>
+                      <th className='p-2 border-b border-black text-center'>
+                        Ilość
+                      </th>
+                      <th className='p-2 border-b border-black text-right'>
+                        Wartość
+                      </th>
                     </tr>
                   </thead>
                   <tbody className='divide-y border-stone-300 font-semibold'>
                     {printModalOrder.items.map((item, i) => (
                       <tr key={i}>
-                        <td className='p-2 font-black text-stone-900'>{item.name}</td>
-                        <td className='p-2 text-center font-mono font-bold'>{item.size}</td>
-                        <td className='p-2 text-center font-mono font-bold'>{item.quantity}</td>
+                        <td className='p-2 font-black text-stone-900'>
+                          {item.name}
+                        </td>
+                        <td className='p-2 text-center font-mono font-bold'>
+                          {item.size}
+                        </td>
+                        <td className='p-2 text-center font-mono font-bold'>
+                          {item.quantity}
+                        </td>
                         <td className='p-2 text-right font-mono font-black'>
-                          ${(item.price * item.quantity).toFixed(2)}
+                          zł{(item.price * item.quantity).toFixed(2)}
                         </td>
                       </tr>
                     ))}
@@ -867,9 +974,12 @@ export default function AdminOrdersView({ onNotification }: AdminOrdersViewProps
 
               {/* Stopka druku */}
               <div className='flex items-center justify-between pt-2 text-[10px] text-stone-500 font-mono uppercase tracking-wider'>
-                <span>Kurier: DPD Express PL • Opłacono: {printModalOrder.paymentMethod}</span>
+                <span>
+                  Kurier: DPD Express PL • Opłacono:{" "}
+                  {printModalOrder.paymentMethod}
+                </span>
                 <span className='font-black text-stone-900 text-sm font-mono'>
-                  TOTAL: ${printModalOrder.totalAmount.toFixed(2)}
+                  TOTAL: zł{printModalOrder.totalAmount.toFixed(2)}
                 </span>
               </div>
 

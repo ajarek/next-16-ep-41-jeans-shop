@@ -129,10 +129,10 @@ export default function Home() {
                       <div className='pt-2 border-t border-black/5 flex items-center justify-between'>
                         <div className='flex items-baseline gap-2'>
                           <span className='text-xs text-stone-400 line-through font-medium'>
-                            ${product.originalPrice.toFixed(2)}
+                            zł{product.originalPrice.toFixed(2)}
                           </span>
                           <span className='text-base font-black text-[#1A1A1A]'>
-                            ${product.price.toFixed(2)}
+                            zł{product.price.toFixed(2)}
                           </span>
                         </div>
                         <div className='text-[9px] bg-stone-100 border border-black/10 px-1.5 py-0.5 text-stone-600 font-bold uppercase tracking-wider shrink-0'>

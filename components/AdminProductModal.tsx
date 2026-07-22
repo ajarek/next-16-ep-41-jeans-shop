@@ -9,7 +9,10 @@ import { SIZES, STYLES } from "@/lib/types"
 interface AdminProductModalProps {
   isOpen: boolean
   onClose: () => void
-  onSave: (productData: Omit<Product, "id">, productId?: string) => Promise<void>
+  onSave: (
+    productData: Omit<Product, "id">,
+    productId?: string,
+  ) => Promise<void>
   initialProduct?: Product | null
 }
 
@@ -48,7 +51,9 @@ export default function AdminProductModal({
   const [category, setCategory] = useState<Product["category"]>("jeans")
   const [style, setStyle] = useState<Product["style"]>("Casual")
   const [gender, setGender] = useState<Product["gender"]>("Woman")
-  const [badge, setBadge] = useState<"Best Seller" | "New" | "Promotion" | "none">("none")
+  const [badge, setBadge] = useState<
+    "Best Seller" | "New" | "Promotion" | "none"
+  >("none")
   const [sizes, setSizes] = useState<Product["sizes"]>(["S", "M", "L"])
   const [imageUrl, setImageUrl] = useState("")
   const [description, setDescription] = useState("")
@@ -59,7 +64,9 @@ export default function AdminProductModal({
     if (initialProduct) {
       setName(initialProduct.name)
       setPrice(String(initialProduct.price))
-      setOriginalPrice(String(initialProduct.originalPrice || initialProduct.price))
+      setOriginalPrice(
+        String(initialProduct.originalPrice || initialProduct.price),
+      )
       setCategory(initialProduct.category)
       setStyle(initialProduct.style)
       setGender(initialProduct.gender)
@@ -77,7 +84,9 @@ export default function AdminProductModal({
       setBadge("New")
       setSizes(["S", "M", "L"])
       setImageUrl(PRESET_IMAGES[0].url)
-      setDescription("Nowoczesne ubranie z najwyższej jakości denimu BLUE.JEANS.")
+      setDescription(
+        "Nowoczesne ubranie z najwyższej jakości denimu BLUE.JEANS.",
+      )
     }
     setFormError(null)
   }, [initialProduct, isOpen])
@@ -163,7 +172,10 @@ export default function AdminProductModal({
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className='p-6 space-y-6 max-h-[80vh] overflow-y-auto'>
+          <form
+            onSubmit={handleSubmit}
+            className='p-6 space-y-6 max-h-[80vh] overflow-y-auto'
+          >
             {formError && (
               <div className='p-3 bg-red-100 border border-red-500 text-red-700 text-xs font-bold'>
                 {formError}
@@ -190,7 +202,7 @@ export default function AdminProductModal({
                 <div className='grid grid-cols-2 gap-3'>
                   <div>
                     <label className='block text-xs font-black uppercase tracking-wider text-black mb-1'>
-                      Cena (PLN) *
+                      Cena (zł) *
                     </label>
                     <input
                       type='number'
@@ -204,7 +216,7 @@ export default function AdminProductModal({
                   </div>
                   <div>
                     <label className='block text-xs font-black uppercase tracking-wider text-black mb-1'>
-                      Stara cena (PLN)
+                      Stara cena (zł)
                     </label>
                     <input
                       type='number'
@@ -224,7 +236,9 @@ export default function AdminProductModal({
                     </label>
                     <select
                       value={category}
-                      onChange={(e) => setCategory(e.target.value as Product["category"])}
+                      onChange={(e) =>
+                        setCategory(e.target.value as Product["category"])
+                      }
                       className='w-full px-3 py-2 bg-white border border-black text-xs font-bold focus:outline-hidden'
                     >
                       <option value='jeans'>Jeansy</option>
@@ -241,7 +255,9 @@ export default function AdminProductModal({
                     </label>
                     <select
                       value={style}
-                      onChange={(e) => setStyle(e.target.value as Product["style"])}
+                      onChange={(e) =>
+                        setStyle(e.target.value as Product["style"])
+                      }
                       className='w-full px-3 py-2 bg-white border border-black text-xs font-bold focus:outline-hidden'
                     >
                       {STYLES.map((s) => (
@@ -260,7 +276,9 @@ export default function AdminProductModal({
                     </label>
                     <select
                       value={gender}
-                      onChange={(e) => setGender(e.target.value as Product["gender"])}
+                      onChange={(e) =>
+                        setGender(e.target.value as Product["gender"])
+                      }
                       className='w-full px-3 py-2 bg-white border border-black text-xs font-bold focus:outline-hidden'
                     >
                       <option value='Woman'>Kobieta</option>
@@ -364,7 +382,9 @@ export default function AdminProductModal({
                     ) : (
                       <div className='text-center p-4 text-stone-400'>
                         <ImageIcon size={32} className='mx-auto mb-1' />
-                        <span className='text-xs font-bold block'>Podgląd zdjęcia</span>
+                        <span className='text-xs font-bold block'>
+                          Podgląd zdjęcia
+                        </span>
                       </div>
                     )}
                   </div>
@@ -404,7 +424,9 @@ export default function AdminProductModal({
                 ) : (
                   <>
                     <Check size={16} />
-                    <span>{initialProduct ? "Zapisz Zmiany" : "Dodaj Produkt"}</span>
+                    <span>
+                      {initialProduct ? "Zapisz Zmiany" : "Dodaj Produkt"}
+                    </span>
                   </>
                 )}
               </button>
