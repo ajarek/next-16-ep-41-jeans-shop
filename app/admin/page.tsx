@@ -5,6 +5,7 @@ import { useStore } from "@/components/StoreContext"
 import { useAuth } from "@/components/AuthContext"
 import AuthModal from "@/components/AuthModal"
 import AdminProductModal from "@/components/AdminProductModal"
+import AdminOrdersView from "@/components/AdminOrdersView"
 import type { Product } from "@/lib/types"
 import { CATEGORY_LABELS } from "@/lib/types"
 import {
@@ -28,6 +29,7 @@ import {
   ShieldAlert,
   Lock,
   LogIn,
+  ShoppingBag,
 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
@@ -48,6 +50,9 @@ export default function AdminDashboardPage() {
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false)
   const isAdmin = user?.isAdmin || user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()
+
+  // Stan Zakładki (Products vs Orders)
+  const [activeTab, setActiveTab] = useState<"products" | "orders">("products")
 
   // Stan UI
   const [search, setSearch] = useState("")
@@ -264,7 +269,7 @@ export default function AdminDashboardPage() {
 
       {/* Header Admin Banner */}
       <div className='bg-[#1A1A1A] text-white border-b-4 border-black py-8 px-4 sm:px-6 lg:px-8 shadow-md'>
-        <div className='max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-4'>
+        <div className='max-w-7xl mx-auto flex flex-col md:flex-row md:items-center md:justify-between gap-6'>
           <div>
             <div className='flex items-center gap-2 mb-2'>
               <span className='bg-[#E11D48] text-white text-[10px] font-black uppercase tracking-widest px-2.5 py-0.5 border border-white'>
@@ -276,14 +281,43 @@ export default function AdminDashboardPage() {
               </span>
             </div>
             <h1 className='text-2xl sm:text-3xl font-black italic tracking-tight text-white flex items-center gap-3'>
-              ZARZĄDZANIE PRODUKTAMI
+              {activeTab === "products" ? "ZARZĄDZANIE PRODUKTAMI" : "ZARZĄDZANIE ZAMÓWIENIAMI (FIRESTORE)"}
             </h1>
             <p className='text-xs text-stone-300 font-medium mt-1'>
-              Zarządzaj katalogiem odzieży jeansowej, zmieniaj ceny, dodawaj przedmioty i kontroluj magazyn.
+              {activeTab === "products"
+                ? "Zarządzaj katalogiem odzieży jeansowej, zmieniaj ceny, dodawaj przedmioty i kontroluj magazyn."
+                : "Monitoruj zamówienia klientów z bazy danych Firestore, zmieniaj statusy i generuj listy przewozowe."}
             </p>
+
+            {/* TAB NAVIGATION SWITCHER */}
+            <div className='flex items-center gap-2 mt-6'>
+              <button
+                onClick={() => setActiveTab("products")}
+                className={`px-4 py-2 border-2 border-white text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ${
+                  activeTab === "products"
+                    ? "bg-[#E11D48] text-white shadow-[3px_3px_0px_0px_rgba(255,255,255,0.4)]"
+                    : "bg-stone-900 text-stone-300 hover:bg-stone-800"
+                }`}
+              >
+                <Package size={15} />
+                <span>Katalog Produktów</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab("orders")}
+                className={`px-4 py-2 border-2 border-white text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer ${
+                  activeTab === "orders"
+                    ? "bg-[#E11D48] text-white shadow-[3px_3px_0px_0px_rgba(255,255,255,0.4)]"
+                    : "bg-stone-900 text-stone-300 hover:bg-stone-800"
+                }`}
+              >
+                <ShoppingBag size={15} />
+                <span>Zamówienia (Firestore)</span>
+              </button>
+            </div>
           </div>
 
-          <div className='flex items-center gap-3'>
+          <div className='flex items-center gap-3 self-start md:self-auto'>
             <Link
               href='/shop'
               className='px-4 py-2 bg-white text-black border-2 border-black text-xs font-black uppercase tracking-wider shadow-[3px_3px_0px_0px_rgba(255,255,255,0.3)] hover:bg-stone-100 flex items-center gap-2 transition-all'
@@ -291,21 +325,32 @@ export default function AdminDashboardPage() {
               <ArrowLeft size={14} />
               <span>Powrót do Sklepu</span>
             </Link>
-            <button
-              onClick={() => {
-                setEditingProduct(null)
-                setIsModalOpen(true)
-              }}
-              className='px-5 py-2.5 bg-[#E11D48] text-white border-2 border-white shadow-[3px_3px_0px_0px_rgba(225,29,72,0.5)] hover:bg-red-700 text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all'
-            >
-              <Plus size={16} />
-              <span>Dodaj Nowy Produkt</span>
-            </button>
+
+            {activeTab === "products" && (
+              <button
+                onClick={() => {
+                  setEditingProduct(null)
+                  setIsModalOpen(true)
+                }}
+                className='px-5 py-2.5 bg-[#E11D48] text-white border-2 border-white shadow-[3px_3px_0px_0px_rgba(225,29,72,0.5)] hover:bg-red-700 text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer'
+              >
+                <Plus size={16} />
+                <span>Dodaj Nowy Produkt</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
 
       <div className='max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 space-y-8'>
+        {/* ZAKŁADKA 2: ZAMÓWIENIA (FIRESTORE) */}
+        {activeTab === "orders" && (
+          <AdminOrdersView onNotification={showNotification} />
+        )}
+
+        {/* ZAKŁADKA 1: PRODUKTY */}
+        {activeTab === "products" && (
+          <>
         {/* Metric Cards (KPI) */}
         <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6'>
           {/* Total Count */}
@@ -711,6 +756,9 @@ export default function AdminDashboardPage() {
             ))}
           </div>
         )}
+      {/* --- ZAMKNIĘCIE products tab --- */}
+          </>
+        )}
       </div>
 
       {/* Admin Product Modal (Add/Edit) */}
@@ -736,7 +784,7 @@ export default function AdminDashboardPage() {
             </div>
             <p className='text-xs font-medium text-stone-700 leading-relaxed'>
               Czy na pewno chcesz usunąć produkt{" "}
-              <strong className='text-black font-bold'>"{deletingProduct.name}"</strong> z
+              <strong className='text-black font-bold'>{deletingProduct.name}</strong> z
               katalogu? Operacji nie będzie można cofnąć.
             </p>
             <div className='flex items-center justify-end gap-3 pt-2'>

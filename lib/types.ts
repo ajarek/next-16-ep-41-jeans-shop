@@ -62,3 +62,41 @@ export function buildCategories(products: Product[]) {
         : products.filter((p) => p.category === id).length,
   }))
 }
+
+export interface ShippingAddress {
+  name: string
+  street: string
+  city: string
+  zip: string
+  phone: string
+}
+
+export interface OrderItem {
+  productId: string
+  name: string
+  price: number
+  size: string
+  quantity: number
+  imageUrl: string
+}
+
+export type OrderStatus =
+  | "Płatność zaakceptowana"
+  | "Wysyłka w toku"
+  | "Dostarczono"
+  | "Anulowano"
+
+export interface Order {
+  id: string
+  uid: string
+  items: OrderItem[]
+  totalAmount: number
+  discountAmount: number
+  promoCodeUsed: string | null
+  shippingAddress: ShippingAddress
+  paymentMethod: string
+  createdAt: string
+  status: OrderStatus
+  trackingNumber: string
+}
+
